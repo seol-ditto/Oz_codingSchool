@@ -1,5 +1,8 @@
 # AI Health Web Assignment
 
+## Team Rules
+[팀 규칙 바로가기](docs/1일차_team_rules.md)
+
 ## Alembic Migration Guide
 
 이 프로젝트는 데이터베이스 마이그레이션을 위해 Alembic을 사용합니다.
