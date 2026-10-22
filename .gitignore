@@ -21,3 +21,6 @@ envs/
 .env
 
 .python-version
+
+# mac OS 숨김파일
+.DS_Store
