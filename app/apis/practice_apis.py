@@ -171,6 +171,6 @@ def update_user_handler(
             return user
 	
     raise HTTPException(
-        staus_code=404,
+        status_code=404,
         detail="회원을 찾을 수 없습니다."
 	)
