@@ -30,6 +30,6 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
     # server_default: 값이 비워져있으면 기본값을 DB가 직접 넣게 하는 옵션 -> 마이그레이션하면 테이블 설계에 DEFAULT CURRENT_TIMESTAMP로 들어감
     # func.now() : SQLAlchemy가 DB 종류에 맞는 "현재 시각" 함수로 바꿔줌 -> MySQL에서는 CURRENT_TIMESTAMP(now())로 만들어짐
-        # default=datetime.now()라고 쓰면 서버가 켜질때마다 한번씩 시각이 계산돼서 모든 회원의 created_at이 동일하게 맞춰져버림
-    updated_at: Mapped[datetime] = mapped_column(DateTime, onupdate=func.now())
+    # default=datetime.now()라고 쓰면 서버가 켜질 때 딱 한번만 시각이 계산돼서 모든 회원의 created_at이 동일하게 맞춰져버림
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime, onupdate=func.now())
     # onupdate: 행을 수정할 때마다 시각을 자동으로 바꿔주는 옵션
