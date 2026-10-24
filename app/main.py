@@ -4,9 +4,12 @@ from pathlib import Path
 from fastapi import FastAPI
 from starlette.staticfiles import StaticFiles
 from starlette.responses import FileResponse
-from app.apis.get_user import router as get_user_router
+from app.apis.practice_apis import router as practice_router
+
 app = FastAPI()
-app.include_router(get_user_router)
+
+app.include_router(practice_router)
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # 만약 static, media 폴더가 존재하지 않으면 생성
