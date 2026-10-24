@@ -2,10 +2,10 @@
 ### 팀원
 | 이름 | GitHub ID |
 | --- | --- |
-| 김설아 | @seol.ditto |
-| 김지수 | @soooni1229-art |
-| 이지희 | @wlgml2244-jpg |
-| 홍시윤 | @siyunggu |
+| 김설아 | [@seol-ditto](https://github.com/seol-ditto) |
+| 김지수 | [@soooni1229-art](https://github.com/soooni1229-art) |
+| 이지희 | [@wlgml2244-jpg](https://github.com/wlgml2244-jpg) |
+| 홍시윤 | [@siyunggu](https://github.com/siyunggu) |
 
 
 ### 팀 규칙
@@ -32,20 +32,20 @@
 #### TO DO
 - 작업 시작 전 항상 `dev`를 최신으로 받고 브랜치 만들기
 - 작업 시작 전 항상 터미널에 아래 코드 먼저 실행
-```python
+```bash
   git switch dev                # dev 브랜치로 이동
   git pull origin dev           # 원격 dev의 최신 내용 받아오기
   git switch -c feat/기능이름     # 최신 dev에서 새 브랜치 만들고 이동
 ```
 - 이미 작업 중인 브랜치에 dev 최신 내용을 반영할 때는 아래 코드 실행
-```python
+```bash
 git switch dev
 git pull origin dev     # dev 최신화
 git switch feat/기능이름  # 내 브랜치로 돌아오기
 git merge dev           # 최신 dev 내용을 내 브랜치에 합치기
 ```
 - 커밋 안 한 작업이 있는데 dev로 이동해야 할 때
-```python
+```bash
 git stash          # 작업 중인 내용 임시 보관
 git switch dev
 git pull origin dev
