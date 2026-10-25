@@ -21,7 +21,7 @@ class XrayImage(Base):
     # ForeignKey: "medical_records" 테이블의 id 컬럼
 
     uploader_id: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("users.id", ondelete="SET NULL"), 
+        Integer, ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True, comment="X-ray 이미지를 업로드한 유저의 id",
     )
     # ERD에는 bigint라고 적혀있었지만, ForeignKey로 참조하는 대상과 타입이 동일해야하기 때문에 코드에는 Integer로 작성

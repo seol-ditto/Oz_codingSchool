@@ -42,6 +42,7 @@ class AIAnalysisResult(Base):
         nullable=False,
         comment="AI 예측 신뢰도",
     )
+    # AI 예측 신뢰도를 0~100 사이 퍼센트로 저장(예: 0.9753 -> 97.53)
 
     heatmap_url: Mapped[str] = mapped_column(
         String(255),

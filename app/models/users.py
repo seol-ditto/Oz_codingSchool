@@ -22,13 +22,13 @@ class User(Base):
     )
 
     hashed_password: Mapped[str | None] = mapped_column(
-        String(255), comment="평문 저장 X -> 해쉬화 된 비밀번호 저장",
+        String(255), comment="평문 저장 x -> 해쉬화 된 비밀번호 저장",
     )
 
     name: Mapped[str | None] = mapped_column(String(20))
 
     phone_number: Mapped[str | None] = mapped_column(
-        String(20), unique=True, comment="유저 핸드폰 번호",
+        String(20), unique=True, comment="유저 휴대폰 번호",
     )
 
     gender: Mapped[Gender] = mapped_column(
