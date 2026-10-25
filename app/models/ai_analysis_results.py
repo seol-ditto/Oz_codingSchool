@@ -24,10 +24,9 @@ class AIAnalysisResult(Base):
         autoincrement=True,
     )
 
-    record_id: Mapped[int] = mapped_column(
-        BigInteger,
-        ForeignKey("medical_records.id"),
-        nullable=False,
+   record_id: Mapped[int] = mapped_column(
+    BigInteger,
+    ForeignKey("medical_records.id", ondelete="CASCADE"),
     )
 
     is_pneumonia: Mapped[bool] = mapped_column(
