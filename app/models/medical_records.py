@@ -17,26 +17,26 @@ class MedicalRecord(Base):
 
     patient_id: Mapped[int] = mapped_column(
         BigInteger,
-        ForeignKey("patients.id"),
+        ForeignKey("patients.id", ondelete="CASCADE"),
         nullable=False,
-    )    
+    )
 
     chart_number: Mapped[str] = mapped_column(
         String(50),
         nullable=False,
         unique=True,
-    )   
+    )
 
     symptoms: Mapped[str] = mapped_column(
         Text,
         nullable=False,
-    )  
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
         server_default=func.now(),
-    )  
+    )
 
     updated_at: Mapped[datetime | None] = mapped_column(
         DateTime,
