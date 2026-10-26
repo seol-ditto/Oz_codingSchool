@@ -275,45 +275,59 @@
 #### Headers
 | Key | Value | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| Authorization | Bearer {access_token} | 로그인 사용자 인증을 위한 JWT 액세스 토큰 |
 
 #### 본문 필드
 | 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| 없음 | - | - | 요청 본문 없음 |
 
 #### 쿼리 파라미터 (GET 요청 시)
 | 쿼리 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| 없음 | - | - | 사용하지 않음 |
 
 ### 3) 응답 (Response)
 #### 성공
-- 200 OK (예시입니다 삭제하시고 본인 API에 맞는 걸로 변경하세요!)
-```JSON
-...
+- 200 OK
+
+```json
+{
+  "message": "로그아웃되었습니다."
+}
 ```
+
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| message | string | 로그아웃 성공 메시지 |
 
 #### 응답 Headers
 | Key | 예시 값 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| Content-Type | application/json | 응답 데이터가 JSON 형식임을 나타냄 |
+| Set-Cookie | refresh_token=; Max-Age=0; Path=/api/v1/auth; HttpOnly; Secure; SameSite=Lax | Refresh Token 쿠키 만료 처리 |
 
 #### 실패
-- 401 Unauthorized (예시입니다 삭제하시고 본인 API에 맞는 걸로 변경하세요!)
-```JSON
-...
+
+- 401 Unauthorized (로그인 인증 실패)
+
+```json
+{
+  "detail": "인증 정보가 유효하지 않습니다."
+}
 ```
+
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| detail | string | 인증 실패 사유 |
+
+
 
 ### 4) 비고
-- ...
-- ...
+- 로그인한 사용자는 상단 헤더의 로그아웃 버튼을 통해 로그아웃할 수 있다.
+- 로그아웃 성공 시 프론트엔드에서 보관 중인 Access Token을 삭제하고 로그인 페이지로 이동한다.
+- 서버는 로그아웃 응답에서 Refresh Token 쿠키를 만료 처리한다.
+- Refresh Token 쿠키 삭제 시 로그인 API와 동일한 쿠키 이름(refresh_token)과 경로(Path=/api/v1/auth)를 사용한다.
 
 
 ## 5. 회원 탈퇴 (REQ-USER-009)
@@ -449,7 +463,7 @@
 
 
 ## 7. 회원 정보 수정 (REQ-USER-007)
-- 담당: 
+- 담당: 이지희
 - 요구사항
     ```text
     모든 로그인 유저는 마이페이지에서 본인의 정보를 수정할 수 있다.
@@ -464,59 +478,99 @@
 ### 1) API 개요
 | 항목 | 내용 |
 | --- | --- |
-| API 이름 |  |
-| 설명 |  |
-| 엔드포인트(Endpoint) |  |
-| 메서드(Method) |  |
-| 인증 필요 여부 |  |
+| API 이름 | 회원 정보 수정 |
+| 설명 | 로그인한 사용자가 본인의 부서 및 휴대폰 번호를 부분 수정한다. |
+| 엔드포인트(Endpoint) | `/api/v1/users/me` |
+| 메서드(Method) | PATCH |
+| 인증 필요 여부 | 필요 (JWT Access Token) |
 
 ### 2) 요청 (Request)
 #### Headers
 | Key | Value | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| Authorization | Bearer {access_token} | 로그인 사용자 인증을 위한 JWT 엑세스 토큰 |
+| Content-Type | application/json | 요청 본문이 JSON 형식임을 나타냄|
 
 #### 본문 필드
 | 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
-
+| department | string | N | 변경할 부서 (research, medical, develop) |
+| phone_number | string | N | 변경할 휴대폰 번호 |
 #### 쿼리 파라미터 (GET 요청 시)
 | 쿼리 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| 없음 | - | - | 사용하지 않음 |
 
 ### 3) 응답 (Response)
 #### 성공
-- 200 OK (예시입니다 삭제하시고 본인 API에 맞는 걸로 변경하세요!)
-```JSON
-...
+- 200 OK 
+
+```json
+{
+  "name": "김오즈",
+  "email": "oz@example.com",
+  "department": "medical",
+  "gender": "F",
+  "phone_number": "010-1234-5678",
+  "role": "staff"
+}
 ```
+
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| name | string | 회원 이름 |
+| email | string | 회원 이메일 |
+| department | string | 회원 부서 |
+| gender | string | 회원 성별 (M/F)|
+| phone_number | string | 회원 휴대폰 번호 |
+| role | string | 회원 권한 (pending, staff, admin) | 
 
 #### 응답 Headers
 | Key | 예시 값 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| Content-Type | application/json | 응답 데이터가 JSON 형식임을 나타냄 |
 
 #### 실패
-- 401 Unauthorized (예시입니다 삭제하시고 본인 API에 맞는 걸로 변경하세요!)
-```JSON
-...
+- 401 Unauthorized
+
+```json
+{
+    "detail": "인증 정보가 유효하지 않습니다."
+}
 ```
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| detail | string | 인증 실패 사유 |
+
+- 422 Unprocessable Entity
+```json
+{
+    "detail": [
+        {
+            "type": "literal_error",
+            "loc": ["body", "department"],
+            "msg": "Input should be 'research', 'medical' or 'develop'",
+            "input": "sales"
+        }
+    ]
+}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | array | 요청 데이터 검증 오류 목록 |
+| type | string | 검증 오류 유형 |
+| loc | array | 오류가 발생한 필드 위치 |
+| msg | string | 검증 오류 메시지 |
+| input | string | 검증에 실패한 입력값 |
 
 ### 4) 비고
-- ...
-- ...
+- department와 phone_number만 부분 수정할 수 있다.
+- 요청에 포함되지 않은 필드는 기존 값을 유지한다.
+- 수정할 필드 없이 빈 JSON 객체({})를 전송한 경우의 처리 방식
 
 
 ## 8. 비밀번호 변경 (REQ-USER-008)
-- 담당: 
+- 담당: 이지희
 - 요구사항
     ```text
     모든 로그인 유저는 마이페이지에서 계정의 비밀번호를 변경할 수 있다.
@@ -531,55 +585,100 @@
 ### 1) API 개요
 | 항목 | 내용 |
 | --- | --- |
-| API 이름 |  |
-| 설명 |  |
-| 엔드포인트(Endpoint) |  |
-| 메서드(Method) |  |
-| 인증 필요 여부 |  |
+| API 이름 | 비밀번호 변경 |
+| 설명 | 로그인한 사용자가 현재 비밀번호를 확인한 후 새 비밀번호로 변경한다. |
+| 엔드포인트(Endpoint) | `/api/v1/users/me/password` |
+| 메서드(Method) | PATCH |
+| 인증 필요 여부 | 필요 (JWT Access Token) |
 
 ### 2) 요청 (Request)
 #### Headers
 | Key | Value | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| Authorization | Bearer {access_token} | 로그인 사용자 인증을 위한 JWT 액세스 토큰 |
+| Content-Type | application/json | 요청 본문이 JSON 형식임을 나타냄 |
 
 #### 본문 필드
 | 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| current_password | string | Y | 현재 사용 중인 비밀번호 |
+| new_password | string | Y | 변경할 새로운 비밀번호 |
 
 #### 쿼리 파라미터 (GET 요청 시)
 | 쿼리 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| 없음 | - | - | 사용하지 않음 |
 
 ### 3) 응답 (Response)
 #### 성공
-- 200 OK (예시입니다 삭제하시고 본인 API에 맞는 걸로 변경하세요!)
-```JSON
-...
+- 200 OK 
+
+```json
+{
+  "message": "비밀번호가 성공적으로 변경되었습니다."
+}
 ```
+
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| message | string | 비밀번호 변경 성공 메시지 |
 
 #### 응답 Headers
 | Key | 예시 값 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| Content-Type | application/json | 응답 데이터가 JSON 형식임을 나타냄 |
 
 #### 실패
-- 401 Unauthorized (예시입니다 삭제하시고 본인 API에 맞는 걸로 변경하세요!)
-```JSON
-...
+- 401 Unauthorized (로그인 인증 실패)
+
+```json
+{
+  "detail": "인증 정보가 유효하지 않습니다."
+}
 ```
+
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| detail | string | 인증 실패 사유 |
+
+- 400 Bad Request (현재 비밀번호 불일치)
+
+```json
+{
+  "detail": "현재 비밀번호가 일치하지 않습니다."
+}
+```
+
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 비밀번호 확인 실패 사유 |
+
+
+- 422 Unprocessable Entity (요청 데이터 검증 실패)
+
+```json
+{
+  "detail": [
+    {
+      "type": "missing",
+      "loc": ["body", "new_password"],
+      "msg": "Field required"
+    }
+  ]
+}
+```
+
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | array | 요청 데이터 검증 오류 목록 |
+| type | string | 검증 오류 유형 |
+| loc | array | 오류가 발생한 필드 위치 |
+| msg | string | 검증 오류 메시지 |
 
 ### 4) 비고
-- ...
-- ...
+- 현재 비밀번호가 일치하는 경우에만 새 비밀번호로 변경한다.
+- 비밀번호는 응답 데이터에 포함하지 않는다.
+- 비밀번호 관련 입력값이 오류 응답에 노출되지 않도록 처리한다. 
 
 
 ## 9. 회원 목록 조회 (REQ-USER-004)
