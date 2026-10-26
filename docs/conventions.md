@@ -13,3 +13,5 @@
 
 ## 주어진 ERD와 다르게 구현한 부분
 1. `xray_images.uploader_id`: ERD는 bigint, not null이지만 integer, nullable로 구현 (users.id 타입 일치, SET NULL 적용을 위해)
+
+

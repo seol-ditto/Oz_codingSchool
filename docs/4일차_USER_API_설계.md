@@ -57,7 +57,7 @@
 ### NFR-USER-003 API 성능
 - 모든 유저 API는 최대 3초 이내에 로직 처리하고 응답한다.
 ## 1. 회원가입 (REQ-USER-001)
-- 담당: 
+- 담당: 홍시윤
 - 요구사항
     ```text
     사내 의료인, 개발 실무진은 회원가입을 통해 흉부 X-Ray AI 진단 서비스를 이용할 수 있어야한다.
@@ -74,59 +74,107 @@
 ### 1) API 개요
 | 항목 | 내용 |
 | --- | --- |
-| API 이름 |  |
-| 설명 |  |
-| 엔드포인트(Endpoint) |  |
-| 메서드(Method) |  |
-| 인증 필요 여부 |  |
+| API 이름 | 회원가입 |
+| 설명 | 이메일, 비밀번호, 이름, 부서, 성별, 휴대폰 번호를 입력받아 신규 회원을 생성한다. 가입 직후 권한은 pending(대기자), 계정 활성화 여부는 true로 설정된다. |
+| 엔드포인트(Endpoint) | `/api/v1/auth/signup` |
+| 메서드(Method) | POST |
+| 인증 필요 여부 | 불필요 (비로그인 상태에서 호출) |
 
 ### 2) 요청 (Request)
 #### Headers
 | Key | Value | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| Content-Type | application/json | 요청 본문 형식 |
 
 #### 본문 필드
 | 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| email | string | Y | 이메일 형식, 중복 불가. 로그인 ID로 사용 |
+| password | string | Y | 비밀번호. 서버에서 해시하여 저장하며 응답에 포함하지 않음 |
+| name | string | Y | 이름 |
+| department | string | Y | 부서. research(연구) / medical(의료) / develop(개발) 중 하나 |
+| gender | string | Y | 성별. M / F 중 하나 |
+| phone_number | string | Y | 휴대폰 번호 (예: 010-1234-5678) |
+
 
 #### 쿼리 파라미터 (GET 요청 시)
 | 쿼리 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| 없음 | - | - | 없음 |
 
 ### 3) 응답 (Response)
 #### 성공
-- 200 OK (예시입니다 삭제하시고 본인 API에 맞는 걸로 변경하세요!)
+- 201 Created
 ```JSON
-...
+{
+  "id": 1,
+  "email": "oz@example.com",
+  "name": "김오즈",
+  "department": "medical",
+  "gender": "F",
+  "phone_number": "010-1234-5678",
+  "role": "pending",
+  "is_active": true
+}
 ```
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| id | integer | 회원 고유 ID |
+| email | string | 이메일 |
+| name | string | 이름 |
+| department | string | 부서 (research / medical / develop) |
+| gender | string | 성별 (M / F) |
+| phone_number | string | 휴대폰 번호 |
+| role | string | 권한. 가입 시 기본값 pending |
+| is_active | boolean | 계정 활성화 여부. 가입 시 true |
+
 
 #### 응답 Headers
 | Key | 예시 값 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| Content-Type | application/json | 응답 본문 형식 |
 
 #### 실패
-- 401 Unauthorized (예시입니다 삭제하시고 본인 API에 맞는 걸로 변경하세요!)
+- 409 Conflict (이메일 중복)
 ```JSON
-...
+{"detail": "이미 사용 중인 이메일입니다."}
 ```
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| detail | string | 에러 메시지 |
+
+<br>
+
+- 422 Unprocessable Entity (필수값 누락 / 형식 오류, FastAPI 자동 응답)
+```JSON
+{
+  "detail": [
+    {
+      "type": "missing",
+      "loc": ["body", "email"],
+      "msg": "Field required",
+      "input": {}
+    }
+  ]
+}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | array | 검증 오류 목록 |
+| detail[].type | string | 오류 종류 (예: missing, value_error) |
+| detail[].loc | array | 오류가 발생한 위치 (예: ["body", "email"]) |
+| detail[].msg | string | 오류 메시지 |
+| detail[].input | any | 입력된 값 |
 
 ### 4) 비고
-- ...
-- ...
+- 비밀번호는 평문으로 저장하지 않고 해시하여 저장한다.
+- 가입 직후 권한은 pending이며, admin이 권한을 변경하기 전에는 마이페이지 외 서비스에 접근할 수 없다.
+- 비밀번호 마스킹 및 보기 아이콘은 화면에서 처리하며 별도 API는 없다. (NFR-USER-002)
+- 응답은 3초 이내에 반환한다. (NFR-USER-003)
 
 
 ## 2. 로그인 (REQ-USER-002)
-- 담당: 
+- 담당: 홍시윤
 - 요구사항
     ```text
     회원가입을 한 사내 개발진, 의료 실무진, 연구진은 이메일과 비밀번호를 입력하여 로그인을 진행한 후 서비스를 이용할 수 있다.
@@ -135,59 +183,104 @@
 ### 1) API 개요
 | 항목 | 내용 |
 | --- | --- |
-| API 이름 |  |
-| 설명 |  |
-| 엔드포인트(Endpoint) |  |
-| 메서드(Method) |  |
-| 인증 필요 여부 |  |
+| API 이름 | 로그인 |
+| 설명 | 이메일과 비밀번호를 검증한 뒤 JWT를 발급한다. 액세스 토큰은 응답 본문으로, 리프레시 토큰은 http_only 쿠키로 전달한다. |
+| 엔드포인트(Endpoint) | `/api/v1/auth/login` |
+| 메서드(Method) | POST |
+| 인증 필요 여부 | 불필요 |
 
 ### 2) 요청 (Request)
 #### Headers
 | Key | Value | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| Content-Type | application/json | 요청 본문 형식 |
 
 #### 본문 필드
 | 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| email | string | Y | 가입한 이메일 |
+| password | string | Y | 비밀번호 |
 
 #### 쿼리 파라미터 (GET 요청 시)
 | 쿼리 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| 없음 | - | - | 없음 |
 
 ### 3) 응답 (Response)
 #### 성공
-- 200 OK (예시입니다 삭제하시고 본인 API에 맞는 걸로 변경하세요!)
+- 200 OK 
 ```JSON
-...
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer"
+}
 ```
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| access_token | string | 액세스 토큰(JWT). 만료 30분. 페이로드에는 user_id만 포함 |
+| token_type | string | 토큰 종류. 항상 bearer |
 
 #### 응답 Headers
 | Key | 예시 값 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| Content-Type | application/json | 응답 본문 형식 |
+| Set-Cookie | refresh_token=eyJhbGciOi...; HttpOnly; Secure; SameSite=Lax; Path=/api/v1/auth; Max-Age=604800 | 리프레시 토큰(JWT). 만료 7일. 클라이언트 JS에서 접근 불가 |
 
 #### 실패
-- 401 Unauthorized (예시입니다 삭제하시고 본인 API에 맞는 걸로 변경하세요!)
+- 401 Unauthorized (이메일 없음 또는 비밀번호 불일치)
 ```JSON
-...
+{"detail": "이메일 또는 비밀번호가 올바르지 않습니다."}
 ```
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| detail | string | 에러 메시지 |
+
+<br>
+
+- 403 Forbidden (비활성화된 계정)
+```JSON
+{"detail": "비활성화된 계정입니다."}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 에러 메시지 |
+
+<br>
+
+- 422 Unprocessable Entity (필수값 누락 / 형식 오류, FastAPI 자동 응답)
+```JSON
+{
+  "detail": [
+    {
+      "type": "missing",
+      "loc": ["body", "password"],
+      "msg": "Field required",
+      "input": {"email": "hong@example.com"}
+    }
+  ]
+}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | array | 검증 오류 목록 |
+| detail[].type | string | 오류 종류 |
+| detail[].loc | array | 오류가 발생한 위치 |
+| detail[].msg | string | 오류 메시지 |
+| detail[].input | any | 입력된 값 |
+
+
 
 ### 4) 비고
-- ...
-- ...
+- 이메일 없음과 비밀번호 불일치는 계정 존재 여부 노출을 막기 위해 같은 메시지로 응답한다.
+- 토큰 페이로드에는 최소 식별 정보인 user_id만 저장한다. (만료 시각 exp 등 표준 클레임 제외) 권한(role)은 토큰에 넣지 않고 API 호출 시 DB에서 확인한다.
+- 액세스 토큰은 이후 API 요청의 Authorization: Bearer {access_token} 헤더로 전달한다.
+- pending(대기자) 권한도 로그인은 가능하며, 마이페이지 외 서비스 접근은 각 API의 인가 단계에서 막는다.
+- 리프레시 토큰 쿠키 이름은 refresh_token, Path는 /api/v1/auth로 통일한다. (로그아웃에서 쿠키를 삭제할 때 동일한 값 사용)
+- 응답은 3초 이내에 반환한다. (NFR-USER-003)
 
 
 ## 3. 토큰 재발급 (NFR-USER-001)
-- 담당: 
+- 담당: 홍시윤
 - 요구사항
     ```text
     로그인 시 JWT(Json Web Token)을 발급하며, 이를 API 인가에 사용한다.
@@ -204,55 +297,83 @@
 ### 1) API 개요
 | 항목 | 내용 |
 | --- | --- |
-| API 이름 |  |
-| 설명 |  |
-| 엔드포인트(Endpoint) |  |
-| 메서드(Method) |  |
-| 인증 필요 여부 |  |
+| API 이름 | 액세스 토큰 재발급 |
+| 설명 | 쿠키로 전달된 리프레시 토큰을 검증하여 새로운 액세스 토큰을 발급한다. 리프레시 토큰이 만료되었거나 유효하지 않으면 401을 반환하고, 클라이언트는 로그인 페이지로 이동시킨다. |
+| 엔드포인트(Endpoint) | `/api/v1/auth/refresh` |
+| 메서드(Method) | POST |
+| 인증 필요 여부 | 액세스 토큰은 불필요, refresh_token 쿠키 필요 |
 
 ### 2) 요청 (Request)
 #### Headers
 | Key | Value | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| Cookie	 | `refresh_token={refresh_token}` | 로그인 시 발급된 리프레시 토큰. 브라우저가 자동 전송 (클라이언트 요청 시 credentials: "include" 설정 필요) |
 
 #### 본문 필드
 | 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| 없음 | - | - | 없음 |
 
 #### 쿼리 파라미터 (GET 요청 시)
 | 쿼리 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| 없음 | - | - | 없음 |
 
 ### 3) 응답 (Response)
 #### 성공
-- 200 OK (예시입니다 삭제하시고 본인 API에 맞는 걸로 변경하세요!)
+- 200 OK 
 ```JSON
-...
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer"
+}
 ```
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| access_token | string | 새로 발급된 액세스 토큰(JWT). 만료 30분. 페이로드에는 user_id만 포함 |
+| token_type | string | 토큰 종류. 항상 bearer |
 
 #### 응답 Headers
 | Key | 예시 값 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| Content-Type | application/json | 응답 본문 형식 |
 
 #### 실패
-- 401 Unauthorized (예시입니다 삭제하시고 본인 API에 맞는 걸로 변경하세요!)
+- 401 Unauthorized (리프레시 토큰 쿠키 없음)
 ```JSON
-...
+{"detail": "리프레시 토큰이 없습니다. 다시 로그인해주세요."}
 ```
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| detail | string | 에러 메시지 |
+
+<br>
+
+- 401 Unauthorized (리프레시 토큰 만료)
+```JSON
+{"detail": "리프레시 토큰이 만료되었습니다. 다시 로그인해주세요."}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 에러 메시지 |
+
+<br>
+
+- 401 Unauthorized (유효하지 않은 리프레시 토큰)
+```JSON
+{"detail": "유효하지 않은 리프레시 토큰입니다. 다시 로그인해주세요."}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 에러 메시지 |
+
 
 ### 4) 비고
-- ...
-- ...
+- 액세스 토큰 만료 주기는 30분, 리프레시 토큰 만료 주기는 7일이다.
+- 클라이언트는 API 호출이 토큰 만료로 401을 받으면 이 API를 호출해 새 액세스 토큰으로 재시도한다. 이 API도 401이면 재로그인을 유도한다.
+- 리프레시 토큰은 HttpOnly 쿠키로만 전달되어 JS에서 접근할 수 없다. 이 API는 새 리프레시 토큰을 발급하지 않으므로 Set-Cookie는 응답하지 않는다.
+- 토큰 페이로드에는 user_id만 저장하며, 존재하지 않거나 비활성화된 user_id의 토큰은 유효하지 않은 토큰으로 처리한다.
+- 응답은 3초 이내에 반환한다. (NFR-USER-003)
 
 
 ## 4. 로그아웃 (REQ-USER-003)
