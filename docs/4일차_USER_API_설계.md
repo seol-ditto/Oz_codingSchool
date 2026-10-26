@@ -186,7 +186,7 @@
 | 설명 | 이메일과 비밀번호를 검증한 뒤 JWT를 발급한다. 액세스 토큰은 응답 본문으로, 리프레시 토큰은 http_only 쿠키로 전달한다. |
 | 엔드포인트(Endpoint) | `/api/v1/auth/login` |
 | 메서드(Method) | POST |
-| 인증 필요 여부 | 불필요 |
+| 인증 필요 여부 | N |
 
 ### 2) 요청 (Request)
 #### Headers
