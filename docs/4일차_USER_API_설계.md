@@ -80,6 +80,7 @@
 | 메서드(Method) |  |
 | 인증 필요 여부 |  |
 
+
 ### 2) 요청 (Request)
 #### Headers
 | Key | Value | 설명 |
@@ -317,7 +318,7 @@
 
 
 ## 5. 회원 탈퇴 (REQ-USER-009)
-- 담당: 
+- 담당: 김지수
 - 요구사항
     ```text
     모든 로그인 유저는 마이페이지에서 회원탈퇴 버튼을 통해 회원탈퇴를 진행할 수 있다.
@@ -380,7 +381,7 @@
 
 
 ## 6. 마이페이지 조회 (REQ-USER-006)
-- 담당: 
+- 담당: 김지수
 - 요구사항
     ```text
     모든 로그인 유저는 마이페이지에서 본인의 정보를 확인할 수 있다.
@@ -583,7 +584,7 @@
 
 
 ## 9. 회원 목록 조회 (REQ-USER-004)
-- 담당: 
+- 담당: 김설아
 - 요구사항
     ```text
     관리자 권한(Admin) 유저는 회원관리 메뉴에 접속하여 모든 회원을 목록으로 조회할 수 있다.
@@ -605,59 +606,106 @@
 ### 1) API 개요
 | 항목 | 내용 |
 | --- | --- |
-| API 이름 |  |
-| 설명 |  |
-| 엔드포인트(Endpoint) |  |
-| 메서드(Method) |  |
-| 인증 필요 여부 |  |
+| API 이름 | 회원 목록 조회 |
+| 설명 | admin 유저가 회원 목록을 조회한다. email, name 검색과 부서 필터를 사용할 수 있다. |
+| 엔드포인트(Endpoint) | `/api/v1/admin/users` |
+| 메서드(Method) | GET |
+| 인증 필요 여부 | Y (admin 권한만 가능) |
 
 ### 2) 요청 (Request)
 #### Headers
 | Key | Value | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| Authorization | Bearer {access_token} | 로그인한 admin 유저의 액세스 토큰 |
 
 #### 본문 필드
 | 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| - |  |  | 요청 본문을 사용하지 않음 |
 
 #### 쿼리 파라미터 (GET 요청 시)
 | 쿼리 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| search | string | N | 이메일 또는 이름 검색어(일부만 입력해도 검색 가능) |
+| department | string | N | 부서 필터(research, medical, develop 중 하나) |
 
 ### 3) 응답 (Response)
 #### 성공
-- 200 OK (예시입니다 삭제하시고 본인 API에 맞는 걸로 변경하세요!)
+- 200 OK
 ```JSON
-...
+[
+    {
+        "id": 1,
+        "email": "oz@example.com",
+        "name": "김오즈",
+        "department": "medical",
+        "gender": "F",
+        "phone_number": "010-1234-5678",
+        "is_active": true
+    }
+]
 ```
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| id | integer | 고유 ID |
+| email | string | 이메일 |
+| name | string | 이름 |
+| department | string | 부서(연구, 의료, 개발) |
+| gender | string | 성별(M / F) |
+| phone_number | string | 휴대폰 번호 |
+| is_active | boolean | 계정 활성화 여부 |
 
 #### 응답 Headers
 | Key | 예시 값 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| - |  | 없음 |
 
 #### 실패
-- 401 Unauthorized (예시입니다 삭제하시고 본인 API에 맞는 걸로 변경하세요!)
+- 401 Unauthorized
 ```JSON
-...
+{"detail": "인증 정보가 유효하지 않습니다."}
 ```
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| detail | string | 토큰이 없거나 만료된 경우 |
+
+- 403 Forbidden
+```JSON
+{"detail": "관리자 권한이 필요합니다."}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 어드민이 아닌 유저가 요청한 경우 |
+
+- 422 Unprocessable Entity
+```JSON
+{
+  "detail": [
+    {
+      "loc": ["query", "department"],
+      "msg": "Input should be 'research', 'medical' or 'develop'",
+      "type": "enum"
+    }
+  ]
+}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | array | 부서 값이 정해진 3개가 아닌 경우 |
+| detail[].loc | array | 오류가 발생한 필드 위치 |
+| detail[].msg | string | 오류 내용 |
+| detail[].type | string | 오류 종류 |
 
 ### 4) 비고
-- ...
-- ...
+- 어드민 권한(admin) 유저만 호출 가능
+- 검색 결과가 없으면 빈 목록 `[]`을 반환(200)
+- 쿼리 파라미터를 하나도 안 보내면 전체 회원 조회
+- search와 department를 함께 보내면 두 조건을 모두 만족하는 회원만 조회
+- 쿼리 파라미터 예시 : `/api/v1/admin/users?search=김&department=medical`
 
 
 ## 10. 회원 권한 변경 (REQ-USER-005)
-- 담당: 
+- 담당: 김설아
 - 요구사항
     ```text
     관리자 권한(Admin) 유저는 회원관리 메뉴에 접속하여 목록에서 권한 변경 대상자를 선택하고, 상단에 위치한 권한 변경 버튼클릭하여 선택된 회원의 권한을 변경할 수 있다.
@@ -671,52 +719,101 @@
 ### 1) API 개요
 | 항목 | 내용 |
 | --- | --- |
-| API 이름 |  |
-| 설명 |  |
-| 엔드포인트(Endpoint) |  |
-| 메서드(Method) |  |
-| 인증 필요 여부 |  |
+| API 이름 | 회원 권한 변경 |
+| 설명 | admin 유저가 회원 목록에서 선택한 회원의 권한을 변경한다. |
+| 엔드포인트(Endpoint) | `/api/v1/admin/users/{user_id}/role` |
+| 메서드(Method) | PATCH |
+| 인증 필요 여부 | Y (admin 권한만 가능) |
 
 ### 2) 요청 (Request)
 #### Headers
 | Key | Value | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| Authorization | Bearer {access_token} | 로그인한 admin 유저의 액세스 토큰 |
+
+#### 경로 파라미터
+| 파라미터명 | 타입 | 필수(Y/N) | 설명 |
+| --- | --- | --- | --- |
+| user_id | integer | Y | 권한을 변경할 회원의 고유 ID |
 
 #### 본문 필드
 | 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| role | string | Y | 변경할 권한(pending, staff, admin 중 하나) |
 
 #### 쿼리 파라미터 (GET 요청 시)
 | 쿼리 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| - |  |  | 없음 |
 
 ### 3) 응답 (Response)
 #### 성공
-- 200 OK (예시입니다 삭제하시고 본인 API에 맞는 걸로 변경하세요!)
+- 200 OK
 ```JSON
-...
+{
+    "id": 3,
+    "email": "oz@example.com",
+    "name": "김오즈",
+    "role": "staff"
+}
 ```
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| id | integer | 고유 ID |
+| email | string | 이메일 |
+| name | string | 이름 |
+| role | string | 변경된 권한 |
 
 #### 응답 Headers
 | Key | 예시 값 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| - |  | 없음 |
 
 #### 실패
-- 401 Unauthorized (예시입니다 삭제하시고 본인 API에 맞는 걸로 변경하세요!)
+- 401 Unauthorized
 ```JSON
-...
+{"detail": "인증 정보가 유효하지 않습니다."}
 ```
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| detail | string | 토큰이 없거나 만료된 경우 |
+
+- 403 Forbidden
+```JSON
+{"detail": "관리자 권한이 필요합니다."}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 어드민이 아닌 유저가 요청한 경우 |
+
+- 404 Not Found
+```JSON
+{"detail": "존재하지 않는 회원입니다."}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 해당 user_id의 회원이 없는 경우 |
+
+- 422 Unprocessable Entity
+```JSON
+{
+  "detail": [
+    {
+      "loc": ["body", "role"],
+      "msg": "Input should be 'pending', 'staff' or 'admin'",
+      "type": "enum"
+    }
+  ]
+}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | array | role 값이 정해진 3개가 아니거나 누락된 경우 |
+| detail[].loc | array | 오류가 발생한 필드 위치 |
+| detail[].msg | string | 오류 내용 |
+| detail[].type | string | 오류 종류 |
 
 ### 4) 비고
-- ...
-- ...
+- 어드민 권한(admin) 유저만 호출 가능
+- 한 번에 회원 한 명의 권한만 변경
+- 변경 가능한 권한 : pending(대기자), staff(스태프), admin(어드민)
