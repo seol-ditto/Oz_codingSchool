@@ -1,5 +1,5 @@
 # 토큰/비밀번호 관련 도구 모음
-
+from fastapi import Response
 from datetime import datetime, timedelta, timezone
 
 import jwt
@@ -60,3 +60,36 @@ def decode_refresh_token(token: str) -> int:
     return payload["user_id"]
 
 
+# 리프레시 토큰 쿠키 설정: 심기(로그인), 지우기(로그아웃)가 같은 이름과 Path를 써야 쿠키가 지워짐
+REFRESH_COOKIE_NAME = "refresh_token"
+REFRESH_COOKIE_PATH = "/api/v1/auth"
+
+
+# 리프레시 토큰을 쿠키에 심기 -> 로그인 API가 사용
+def set_refresh_cookie(
+        response: Response,
+        refresh_token: str
+) -> None:
+    response.set_cookie(
+        key=REFRESH_COOKIE_NAME,
+        value=refresh_token,
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+        # 쿠키 수명(초) -> 7일 * 24시간 * 60분 * 60초
+        path=REFRESH_COOKIE_PATH,
+        # 이 주소 아래 API에만 쿠키를 보냄
+        httponly=True,
+        # 자바스크립트가 읽지 못하도록(요구사항의 http_only)
+        samesite="lax",
+        # 다른 사이트에서 몰래 보내는 요청에는 쿠키를 안 붙이겠다
+        secure=False,
+        # 로컬은 http라서 False -> 나중에 배포하게 된다면 True로 변경 필요!!
+    )
+
+# 리프레시 토큰 쿠키 지우기 -> 로그아웃 API가 사용
+def delete_refresh_cookie(
+        response: Response,
+) -> None:
+    response.delete_cookie(
+        key=REFRESH_COOKIE_NAME,
+        path=REFRESH_COOKIE_PATH
+    )
