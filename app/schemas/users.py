@@ -49,3 +49,29 @@ class MessageResponse(BaseModel):
 
 
 # ===== [설아] 회원 목록 조회 / 회원 권한 변경 =====
+# 회원 목록 조회 응답 (회원 1명 분 내용) -> GET /api/v1/admin/users
+class UserListItemResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    email: str | None
+    name: str | None
+    department: Department
+    gender: Gender
+    phone_number: str | None
+    is_active: bool
+
+
+# 권한 변경 요청 -> PATCH /api/v1/admin/users/{user_id}/role
+class RoleUpdateRequest(BaseModel):
+    role: Role
+
+
+# 권한 변경 응답 -> PATCH /api/v1/admin/users/{user_id}/role
+class RoleUpdateResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    email: str | None
+    name: str | None
+    role: Role
