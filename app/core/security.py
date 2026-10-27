@@ -1,7 +1,7 @@
 # 토큰/비밀번호 관련 도구 모음
-from fastapi import Response
 from datetime import datetime, timedelta, timezone
 
+from fastapi import Response
 import jwt
 from pwdlib import PasswordHash
 
@@ -28,6 +28,7 @@ def verify_password(
         hashed_password: str
 ) -> bool:
     return password_hash.verify(password, hashed_password)
+
 
 
 # -------------------------------------------------------
@@ -60,7 +61,10 @@ def decode_refresh_token(token: str) -> int:
     return payload["user_id"]
 
 
+
+# -------------------------------------------------------
 # 리프레시 토큰 쿠키 설정: 심기(로그인), 지우기(로그아웃)가 같은 이름과 Path를 써야 쿠키가 지워짐
+# -------------------------------------------------------
 REFRESH_COOKIE_NAME = "refresh_token"
 REFRESH_COOKIE_PATH = "/api/v1/auth"
 
@@ -84,6 +88,7 @@ def set_refresh_cookie(
         secure=False,
         # 로컬은 http라서 False -> 나중에 배포하게 된다면 True로 변경 필요!!
     )
+
 
 # 리프레시 토큰 쿠키 지우기 -> 로그아웃 API가 사용
 def delete_refresh_cookie(

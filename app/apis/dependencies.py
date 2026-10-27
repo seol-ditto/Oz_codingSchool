@@ -58,7 +58,7 @@ async def get_current_user(
 
     # DB 조회: user_id로 유저 한 명 꺼내기(비동기라서 await 붙임)
     user = await db.get(User, user_id)
-    # 유저 확인: 없는 유저거나 비활성 유저면 401
+    # 유저 확인: 없는 유저면 401 비활성 유저면 403
     if user is None:
         raise HTTPException(
             status_code=401,
