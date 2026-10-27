@@ -397,10 +397,10 @@
 | 항목 | 내용 |
 | --- | --- |
 | API 이름 | 로그아웃 |
-| 설명 | 로그인한 사용자의 Refresh Token 쿠키를 만료 처리하여 로그아웃한다. |
+| 설명 | 로그인한 사용자의 리프레시 토큰 쿠키를 만료 처리하여 로그아웃한다. |
 | 엔드포인트(Endpoint) | `/api/v1/auth/logout` |
 | 메서드(Method) | POST |
-| 인증 필요 여부 | Y (JWT 액세스 토큰) |
+| 인증 필요 여부 | Y (로그인 필요) |
 
 ### 2) 요청 (Request)
 #### Headers
@@ -635,20 +635,21 @@
 | 설명 | 로그인한 사용자가 본인의 부서 및 휴대폰 번호를 부분 수정한다. |
 | 엔드포인트(Endpoint) | `/api/v1/users/me` |
 | 메서드(Method) | PATCH |
-| 인증 필요 여부 | Y (JWT 액세스 토큰) |
+| 인증 필요 여부 | Y (로그인 필요) |
 
 ### 2) 요청 (Request)
 #### Headers
 | Key | Value | 설명 |
 | --- | --- | --- |
-| Authorization | Bearer {access_token} | 로그인 사용자 인증을 위한 JWT 엑세스 토큰 |
-| Content-Type | application/json | 요청 본문이 JSON 형식임을 나타냄|
+| Authorization | Bearer {access_token} | 로그인 사용자 인증을 위한 JWT 액세스 토큰 |
+| Content-Type | application/json | 요청 본문이 JSON 형식임을 나타냄 |
 
 #### 본문 필드
 | 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
 | department | string | N | 변경할 부서 (research, medical, develop) |
 | phone_number | string | N | 변경할 휴대폰 번호 |
+
 #### 쿼리 파라미터 (GET 요청 시)
 | 쿼리 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
@@ -673,10 +674,10 @@
 | --- | --- | --- |
 | name | string | 회원 이름 |
 | email | string | 회원 이메일 |
-| department | string | 회원 부서 |
-| gender | string | 회원 성별 (M/F)|
+| department | string | 회원 부서 (research / medical / develop) |
+| gender | string | 회원 성별 (M / F) |
 | phone_number | string | 회원 휴대폰 번호 |
-| role | string | 회원 권한 (pending, staff, admin) | 
+| role | string | 회원 권한 (pending / staff / admin) |
 
 #### 응답 Headers
 | Key | 예시 값 | 설명 |
@@ -703,7 +704,7 @@
 | detail | string | 에러 메시지 |
 
 
-- 422 Unprocessable Entity
+- 422 Unprocessable Entity (부서 값이 research, medical, develop이 아닌 경우)
 ```json
 {
     "detail": [
@@ -750,7 +751,7 @@
 | 설명 | 로그인한 사용자가 현재 비밀번호를 확인한 후 새 비밀번호로 변경한다. |
 | 엔드포인트(Endpoint) | `/api/v1/users/me/password` |
 | 메서드(Method) | PATCH |
-| 인증 필요 여부 | Y (JWT 액세스 토큰) |
+| 인증 필요 여부 | Y (로그인 필요) |
 
 ### 2) 요청 (Request)
 #### Headers
@@ -788,16 +789,6 @@
 | Content-Type | application/json | 응답 데이터가 JSON 형식임을 나타냄 |
 
 #### 실패
-- 401 Unauthorized (로그인 인증 실패)
-
-```json
-{"detail": "인증 정보가 유효하지 않습니다."}
-```
-
-| 필드명 | 타입 | 설명 |
-| --- | --- | --- |
-| detail | string | 인증 실패 사유 |
-
 - 400 Bad Request (현재 비밀번호 불일치)
 
 ```json
@@ -807,6 +798,17 @@
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
 | detail | string | 비밀번호 확인 실패 사유 |
+
+
+- 401 Unauthorized (로그인 인증 실패)
+
+```json
+{"detail": "인증 정보가 유효하지 않습니다."}
+```
+
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 인증 실패 사유 |
 
 
 - 422 Unprocessable Entity (요청 데이터 검증 실패)
@@ -833,7 +835,8 @@
 ### 4) 비고
 - 현재 비밀번호가 일치하는 경우에만 새 비밀번호로 변경한다.
 - 비밀번호는 응답 데이터에 포함하지 않는다.
-- 비밀번호 관련 입력값이 오류 응답에 노출되지 않도록 처리한다. 
+- 비밀번호 관련 입력값이 오류 응답에 노출되지 않도록 처리한다.
+- 보안상 422 응답에서 input(입력값) 필드는 제외한다.
 
 
 ## 9. 회원 목록 조회 (REQ-USER-004)
@@ -874,7 +877,7 @@
 #### 본문 필드
 | 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-| - |  |  | 요청 본문을 사용하지 않음 |
+| 없음 | - | - | 요청 본문 없음 |
 
 #### 쿼리 파라미터 (GET 요청 시)
 | 쿼리 파라미터명 | 타입 | 필수(Y/N) | 설명 |
@@ -911,7 +914,7 @@
 #### 응답 Headers
 | Key | 예시 값 | 설명 |
 | --- | --- | --- |
-| - |  | 없음 |
+| Content-Type | application/json | 응답 본문 형식 |
 
 #### 실패
 - 401 Unauthorized
@@ -999,7 +1002,7 @@
 #### 쿼리 파라미터 (GET 요청 시)
 | 쿼리 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-| - |  |  | 없음 |
+| 없음 | - | - | 없음 |
 
 ### 3) 응답 (Response)
 #### 성공
@@ -1022,7 +1025,7 @@
 #### 응답 Headers
 | Key | 예시 값 | 설명 |
 | --- | --- | --- |
-| - |  | 없음 |
+| Content-Type | application/json | 응답 본문 형식 |
 
 #### 실패
 - 401 Unauthorized
