@@ -1,6 +1,6 @@
 # API가 주고받는 데이터의 모양을 정하는 파일
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, EmailStr
 
 from app.models.enums import Department, Gender, Role
 
@@ -31,9 +31,25 @@ class MessageResponse(BaseModel):
 
 
 # ===== [시윤] 회원가입 / 로그인 / 토큰 재발급 =====
+# 회원가입 요청 -> POST /api/v1/auth/signup
+class SignupRequest(BaseModel):
+    email: EmailStr
+    password: str
+    name: str
+    department: Department
+    gender: Gender
+    phone_number: str
 
+# 로그인 요청 -> POST /api/v1/auth/login
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
 
-
+# 토큰 응답 -> POST /api/v1/auth/login, POST /api/v1/auth/refresh
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    
 
 
 # ===== [지희] 회원 정보 수정 / 비밀번호 변경 / 로그아웃 =====
