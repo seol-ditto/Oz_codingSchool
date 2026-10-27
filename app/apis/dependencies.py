@@ -12,7 +12,7 @@ import jwt     # 토큰 에러 종류를 알아보기 위해
 
 from app.core.db.databases import async_get_db   # DB 세션을 만들어주는 함수
 from app.core.security import decode_access_token    # 토큰 해석 함수
-from app.models.enums import Role   # 권한 값(pending, staff, admin)
+from app.models.enums import Role, Department   # 권한 값(pending, staff, admin)
 from app.models.users import User   # users 테이블 모델
 
 
@@ -104,3 +104,20 @@ async def get_current_staff(
 
 StaffUser = Annotated[User, Depends(get_current_staff)]
 AdminUser = Annotated[User, Depends(get_current_admin)]
+
+
+# 의료진 staff 또는 admin만 통과시키는 함수 -> 환자 정보 등록, 진료기록 등록이 사용
+async def get_current_medical_staff(
+        user: StaffUser,
+) -> User:
+    if user.role == Role.ADMIN:
+        return user
+
+    if user.department != Department.MEDICAL:
+        raise HTTPException(
+            status_code=403,
+            detail="의료진만 등록할 수 있습니다."
+        )
+    return user
+
+MedicalStaffUser = Annotated[User, Depends(get_current_medical_staff)]
