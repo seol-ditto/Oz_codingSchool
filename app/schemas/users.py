@@ -64,7 +64,16 @@ class PasswordUpdateRequest(BaseModel):
 
 
 # ===== [지수] 마이페이지 조회 / 회원 탈퇴 =====
+# 마이페이지 조회 응답 -> GET /api/v1/users/me
+class MyPageResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
 
+    name: str | None
+    email: str | None
+    department: Department
+    gender: Gender
+    phone_number: str | None
+    role: Role
 
 
 

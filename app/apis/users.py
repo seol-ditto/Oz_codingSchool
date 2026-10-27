@@ -1,17 +1,17 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from app.apis.dependencies import CurrentUser, DBSession
+from app.core.security import delete_refresh_cookie, hash_password, verify_password
 from app.models.users import User
 from app.schemas.users import (
-    UserUpdateResponse,
-    UserUpdateRequest,
-    PasswordUpdateRequest,
     MessageResponse,
+    MyPageResponse,
+    PasswordUpdateRequest,
+    UserUpdateRequest,
+    UserUpdateResponse,
 )
-from app.core.security import hash_password, verify_password
-
 
 router = APIRouter(prefix="/api/v1/users", tags=["users"])
 
@@ -82,6 +82,24 @@ async def update_my_password(
     # 4. 성공 응답
     return MessageResponse(message="비밀번호가 성공적으로 변경되었습니다.")
 
+  
 # ======= [지수] 마이페이지 조회 / 회원 탈퇴 ======
 # GET /me : 마이페이지 조회
+@router.get("/me", response_model=MyPageResponse)
+async def get_my_page(user: CurrentUser):
+    return user
+
+  
 # DELETE /me : 회원 탈퇴
+@router.delete("/me", response_model=MessageResponse)
+async def delete_my_account(
+    user: CurrentUser,
+    db: DBSession,
+    response: Response,
+):
+    await db.delete(user)
+    await db.commit()
+
+    delete_refresh_cookie(response)
+
+    return MessageResponse(message="회원 탈퇴가 완료되었습니다.")
