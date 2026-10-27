@@ -43,6 +43,16 @@ class UserUpdateRequest(BaseModel):
     department: Department | None = None
     phone_number: str | None = None
 
+# 회원 정보 수정 응답 -> PATCH /api/v1/users/me
+class UserUpdateResponse(BaseModel):
+    name: str
+    email: str | None
+    department: Department
+    gender: Gender
+    phone_number: str | None
+    role: Role
+
+    model_config = ConfigDict(from_attributes=True)
 
 # 비밀번호 변경 요청 -> PATCH /api/v1/users/me/password
 class PasswordUpdateRequest(BaseModel):
