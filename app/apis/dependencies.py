@@ -1,5 +1,6 @@
 # API에 붙이는 인증/권한 확인 함수 모음(토큰 해석은 app/core/security.py 사용)
-
+from typing import Annotated
+# 종류 + 붙일 Depends를 한 덩어리로 묶어 이름을 붙이는 도구
 from fastapi import Depends, HTTPException
 # Depends: 다른 함수를 먼저 실행해 결과를 받아오는 도구
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -21,6 +22,8 @@ bearer_scheme = HTTPBearer(auto_error=False)
 # schema: 구조, 설계도
 # scheme: 방식
 
+DBSession = Annotated[AsyncSession, Depends(async_get_db)]
+
 
 # 토큰으로 로그인한 유저를 찾아주는 함수
 # 실행 순서 예시
@@ -29,17 +32,18 @@ bearer_scheme = HTTPBearer(auto_error=False)
 # 3. `bearer_scheme`이 헤더를 읽어서 상자에 담음 -> 상자 안에는 `scheme(=Bearer)`과 `credentials(=abc123)`가 들어있음
 # 4. 그 상자가 `credentials` 변수에 들어간 채로 함수 시작
 async def get_current_user(
+        db: DBSession,    # DB에서 유저를 조회할 세션
         credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),   # 헤더에서 꺼낸 토큰 상자(토큰은 credentials.credentials)
         # credentials = 변수 이름. 함수 안에서 이 이름으로 꺼내 씀
         # : HTTPAuthorizationCredentials = 이 변수에 들어올 종류 표시. "토큰 상자가 들어온다"라는 뜻
         # = Depends(bearer_scheme) = 이 변수에 무엇을 넣을지, "bearer_scheme를 먼저 실행하고, 그 결과를 credentials라는 변수에 넣어라"
-        db: AsyncSession = Depends(async_get_db),   # DB에서 유저를 조회할 세션
 ) -> User:    # -> 뜻: 안내문(회원 한 명을 돌려줍니다.)
     # 헤더 확인: Authorization 헤더가 아예 없으면 401
     if credentials is None:
         raise HTTPException(
             status_code=401,
-            detail="인증 정보가 유효하지 않습니다."
+            detail="인증 정보가 유효하지 않습니다.",
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
     # try 안에서 해석해보고, 실패하면 except로 와서 401
@@ -48,25 +52,35 @@ async def get_current_user(
     except (jwt.InvalidTokenError, KeyError):   # InvalidTokenError: 만료/위조/형식 오류를 전부 포함하는 에러 이름
         raise HTTPException(                    # KeyError: 토큰 안에 user_id가 없는 경우
             status_code=401,
-            detail="인증 정보가 유효하지 않습니다."
+            detail="인증 정보가 유효하지 않습니다.",
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
     # DB 조회: user_id로 유저 한 명 꺼내기(비동기라서 await 붙임)
     user = await db.get(User, user_id)
     # 유저 확인: 없는 유저거나 비활성 유저면 401
-    if user is None or not user.is_active:
+    if user is None:
         raise HTTPException(
             status_code=401,
-            detail="인증 정보가 유효하지 않습니다."
+            detail="인증 정보가 유효하지 않습니다.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    if not user.is_active:
+        raise HTTPException(
+            status_code=403,
+            detail="비활성화된 계정입니다."
         )
 
     # 통과: 유저를 돌려줌
     return user
 
 
+CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
 # admin만 통과시키는 함수
 async def get_current_admin(
-        user: User = Depends(get_current_user),   # 로그인 확인을 먼저 하고, 찾은 유저를 받아옴
+        user: CurrentUser,   # 로그인 확인을 먼저 하고, 찾은 유저를 받아옴
 ) -> User:
     if user.role != Role.ADMIN:
         raise HTTPException(
@@ -78,7 +92,7 @@ async def get_current_admin(
 
 # staff, admin만 통과시키는 함수
 async def get_current_staff(
-        user: User = Depends(get_current_user),
+        user: CurrentUser,
 ) -> User:
     if user.role not in (Role.ADMIN, Role.STAFF):    # 새 권한이 추가돼도 staff, admin만 통과시키도록
         raise HTTPException(
@@ -86,3 +100,7 @@ async def get_current_staff(
             detail="접근 권한이 없습니다."
         )
     return user    # 통과한 유저를 API 함수에 넘겨줌
+
+
+StaffUser = Annotated[User, Depends(get_current_staff)]
+AdminUser = Annotated[User, Depends(get_current_admin)]
