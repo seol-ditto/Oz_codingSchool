@@ -80,4 +80,8 @@ async def update_my_password(
     await db.commit()
 
     # 4. 성공 응답
-    return MessageResponse(message="비밀번호가 성공적으로 변경되었습니다.")   
+    return MessageResponse(message="비밀번호가 성공적으로 변경되었습니다.")
+
+# ======= [지수] 마이페이지 조회 / 회원 탈퇴 ======
+# GET /me : 마이페이지 조회
+# DELETE /me : 회원 탈퇴
