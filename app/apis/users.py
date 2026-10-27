@@ -5,7 +5,7 @@ from sqlalchemy.exc import IntegrityError
 from app.apis.dependencies import CurrentUser, DBSession
 from app.models.users import User
 from app.schemas.users import (
-    UserResponse,
+    UserUpdateResponse,
     UserUpdateRequest,
     PasswordUpdateRequest,
     MessageResponse,
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/api/v1/users", tags=["users"])
 
 # ===== [지희] 회원 정보 수정 =====
 
-@router.patch("/me", response_model=UserResponse)
+@router.patch("/me", response_model=UserUpdateResponse)
 async def update_my_info(
     data: UserUpdateRequest,
     user: CurrentUser,
