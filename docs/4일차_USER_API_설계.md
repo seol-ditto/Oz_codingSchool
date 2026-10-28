@@ -881,7 +881,8 @@
     {
       "type": "missing",
       "loc": ["body", "new_password"],
-      "msg": "Field required"
+      "msg": "Field required",
+      "input": {"current_password": "oldpassword123"}
     }
   ]
 }
@@ -892,12 +893,11 @@
 | detail[].type | string | 오류 종류 |
 | detail[].loc | array | 오류가 발생한 위치 |
 | detail[].msg | string | 오류 메시지 |
+| detail[].input | any | 입력된 값 |
 
 ### 4) 비고
 - 현재 비밀번호가 일치하는 경우에만 새 비밀번호로 변경한다.
-- 비밀번호는 응답 데이터에 포함하지 않는다.
-- 비밀번호 관련 입력값이 오류 응답에 노출되지 않도록 처리한다.
-- 보안상 422 응답에서 input(입력값) 필드는 제외한다.
+- 비밀번호는 성공 응답 데이터에 포함하지 않는다.
 
 
 ## 9. 회원 목록 조회 (REQ-USER-004)
