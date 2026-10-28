@@ -384,8 +384,6 @@
 - 환자 고유 ID(patient_id)를 기준으로 특정 환자 1명의 정보를 조회한다.
 - 로그인한 staff 및 admin 권한의 사용자만 조회할 수 있으며, pending 권한은 접근할 수 없다.
 - patient_id가 정수가 아닌 경우 422 오류를 반환한다.
-- 상세 조회 화면의 필수 항목 외에 id, created_at, updated_at을 함께 반환하는 방식은 팀원들과 확인 후 확정한다.
-
 
 ## 4. 환자 정보 수정 (REQ-PTNT-004)
 - 담당: 이지희
@@ -423,7 +421,7 @@
 | 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
 | name | string | N | 수정할 환자 이름 (최대 30자) |
-| phone | string | N | 수정할 연락처 (하이픈 없이 숫자만, 최대 11자리) |
+| phone | string | N | 환자 연락처. 하이픈 없이 숫자만 허용, 최대 11자리 |
 
 #### 쿼리 파라미터 (GET 요청 시)
 | 쿼리 파라미터명 | 타입 | 필수(Y/N) | 설명 |
@@ -447,12 +445,12 @@
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
 | id | integer | 환자 고유 ID |
-| name | string | 수정된 환자 이름 |
+| name | string | 환자 이름 |
 | age | integer | 환자 나이 |
-| gender | string | 환자 성별 (M/F) |
-| phone | string | 수정된 환자 연락처 (하이픈 없이 숫자만) |
-| created_at | string | 환자 정보 생성일시 |
-| updated_at | string \| null | 환자 정보 최종 수정일시 (수정 이력이 없으면 null) |
+| gender | string | 성별 (M / F) |
+| phone | string | 환자 연락처 |
+| created_at | string | 생성일시 (예: 2026-10-27T14:30:00) |
+| updated_at | string \| null | 수정일시. 수정 이력이 없으면 null |
 
 
 #### 응답 Headers
@@ -461,15 +459,6 @@
 | Content-Type | application/json | 응답 데이터가 JSON 형식임을 나타냄 |
 
 #### 실패
-
-- 400 Bad Request (수정할 필드가 없는 경우)
-```JSON
-{"detail": "수정할 정보가 없습니다."}
-```
-
-| 필드명 | 타입 | 설명 |
-| --- | --- | --- |
-| detail | string | 수정할 정보가 없다는 오류 메시지 |
 
 - 401 Unauthorized
 ```JSON
@@ -524,7 +513,7 @@
 }
 ```
 
-**경로 파라미터가 정수가 아닌 경우**
+- 422 Unprocessable Entity (경로 파라미터 patient_id가 정수가 아닌 경우)
 ```JSON
 {
   "detail": [
@@ -551,8 +540,8 @@
 - 로그인한 staff 및 admin 권한의 사용자만 수정할 수 있으며, pending 권한은 접근할 수 없다.
 - 이름(name)과 연락처(phone)만 부분 수정하며, 나이와 성별은 수정할 수 없다.
 - 수정 성공 시 updated_at을 갱신한다.
-- patient_id가 정수가 아니거나 요청 필드의 검증 조건을 위반하면 422 오류를 반환한다.
-- 빈 요청 본문({})의 처리 방식은 팀원들과 협의 후 확정한다.
+- patient_id가 정수가 아니거나, 이름(name)이 30자를 초과하거나, 연락처(phone)에 하이픈 등 숫자 외 문자가 포함되거나 11자리를 초과하면 422 오류를 반환한다.
+- 빈 JSON 객체 `{}`를 전송하면 환자 정보를 변경하지 않고 기존 정보를 200 OK로 반환한다.
 
 
 ## 5. 환자 정보 삭제 (REQ-PTNT-005)
