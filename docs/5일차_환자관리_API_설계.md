@@ -263,59 +263,128 @@
 ### 1) API 개요
 | 항목 | 내용 |
 | --- | --- |
-| API 이름 |  |
-| 설명 |  |
-| 엔드포인트(Endpoint) |  |
-| 메서드(Method) |  |
-| 인증 필요 여부 |  |
+| API 이름 | 환자 정보 상세 조회 |
+| 설명 | 환자 고유 ID를 이용하여 특정 환자의 상세 정보를 조회한다. |
+| 엔드포인트(Endpoint) | /api/v1/patients/{patient_id} |
+| 메서드(Method) | GET |
+| 인증 필요 여부 | Y (staff 이상만 가능) |
 
 ### 2) 요청 (Request)
 #### Headers
 | Key | Value | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| Authorization | Bearer {access_token} | 로그인한 유저의 액세스 토큰 |
 
 #### 경로 파라미터
 | 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| patient_id | integer | Y | 환자 고유 ID |
+
 
 #### 본문 필드
 | 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| 없음 | - | - | 없음 |
+
 
 #### 쿼리 파라미터 (GET 요청 시)
 | 쿼리 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| 없음 | - | - | 없음 |
+
 
 ### 3) 응답 (Response)
 #### 성공
-- 200 OK (예시입니다 삭제하시고 본인 API에 맞는 걸로 변경하세요!)
+- 200 OK
 ```JSON
-...
+{
+  "id": 1,
+  "name": "김오즈",
+  "age": 27,
+  "gender": "F",
+  "phone": "01012345678",
+  "created_at": "2026-10-27T14:30:00",
+  "updated_at": null
+}
 ```
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| id | integer | 환자 고유 ID |
+| name | string | 환자 이름 |
+| age | integer | 환자 나이 |
+| gender | string | 환자 성별 (M/F) |
+| phone | string | 환자 연락처 (하이픈 없이 숫자만) |
+| created_at | string | 환자 정보 생성일시 |
+| updated_at | string \| null | 환자 정보 수정일시 (수정 이력이 없으면 null) |
+
 
 #### 응답 Headers
 | Key | 예시 값 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| Content-Type | application/json | 응답 데이터가 JSON 형식임을 나타냄 |
 
 #### 실패
-- 401 Unauthorized (예시입니다 삭제하시고 본인 API에 맞는 걸로 변경하세요!)
+- 401 Unauthorized
 ```JSON
-...
+{"detail": "인증 정보가 유효하지 않습니다."}
 ```
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| detail | string | 인증 실패 메시지 |
+
+- 403 Forbidden (비활성 회원)
+```JSON
+{"detail": "비활성화된 계정입니다."}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 계정 비활성화 메시지 |
+
+- 403 Forbidden (대기자 권한: pending)
+```JSON
+{"detail": "접근 권한이 없습니다."}
+```
+
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 접근 권한 부족 메시지 |
+
+- 404 Not Found
+```JSON
+{"detail": "존재하지 않는 환자입니다."}
+```
+
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 존재하지 않는 환자에 대한 오류 메시지 |
+
+- 422 Unprocessable Entity
+```JSON
+{
+  "detail": [
+    {
+      "type": "int_parsing",
+      "loc": ["path", "patient_id"],
+      "msg": "Input should be a valid integer, unable to parse string as an integer",
+      "input": "abc"
+    }
+  ]
+}
+```
+
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | array | 검증 오류 목록 |
+| detail[].type | string | 오류 종류 |
+| detail[].loc | array | 오류가 발생한 위치 |
+| detail[].msg | string | 오류 메시지 |
+| detail[].input | any | 입력된 값 |
 
 ### 4) 비고
-- ...
+- 환자 고유 ID(patient_id)를 기준으로 특정 환자 1명의 정보를 조회한다.
+- 로그인한 staff 및 admin 권한의 사용자만 조회할 수 있으며, pending 권한은 접근할 수 없다.
+- patient_id가 정수가 아닌 경우 422 오류를 반환한다.
+- 상세 조회 화면의 필수 항목 외에 id, created_at, updated_at을 함께 반환하는 방식은 팀원들과 확인 후 확정한다.
 
 
 ## 4. 환자 정보 수정 (REQ-PTNT-004)
@@ -332,59 +401,158 @@
 ### 1) API 개요
 | 항목 | 내용 |
 | --- | --- |
-| API 이름 |  |
-| 설명 |  |
-| 엔드포인트(Endpoint) |  |
-| 메서드(Method) |  |
-| 인증 필요 여부 |  |
+| API 이름 | 환자 정보 수정 |
+| 설명 | 환자 고유 ID를 이용하여 특정 환자의 이름과 연락처를 수정한다. |
+| 엔드포인트(Endpoint) | /api/v1/patients/{patient_id} |
+| 메서드(Method) | PATCH |
+| 인증 필요 여부 | Y (staff 이상만 가능) |
 
 ### 2) 요청 (Request)
 #### Headers
 | Key | Value | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| Authorization | Bearer {access_token} | 로그인한 유저의 액세스 토큰 |
+| Content-Type | application/json | 요청 본문이 JSON 형식임을 나타냄 |
 
 #### 경로 파라미터
 | 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| patient_id | integer | Y | 환자 고유 ID |
 
 #### 본문 필드
 | 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| name | string | N | 수정할 환자 이름 (최대 30자) |
+| phone | string | N | 수정할 연락처 (하이픈 없이 숫자만, 최대 11자리) |
 
 #### 쿼리 파라미터 (GET 요청 시)
 | 쿼리 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| 없음 | - | - | 없음 |
 
 ### 3) 응답 (Response)
 #### 성공
-- 200 OK (예시입니다 삭제하시고 본인 API에 맞는 걸로 변경하세요!)
+- 200 OK
 ```JSON
-...
+{
+  "id": 1,
+  "name": "김오즈",
+  "age": 27,
+  "gender": "F",
+  "phone": "01012345678",
+  "created_at": "2026-10-27T14:30:00",
+  "updated_at": "2026-10-28T09:30:00"
+}
 ```
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| id | integer | 환자 고유 ID |
+| name | string | 수정된 환자 이름 |
+| age | integer | 환자 나이 |
+| gender | string | 환자 성별 (M/F) |
+| phone | string | 수정된 환자 연락처 (하이픈 없이 숫자만) |
+| created_at | string | 환자 정보 생성일시 |
+| updated_at | string \| null | 환자 정보 최종 수정일시 (수정 이력이 없으면 null) |
+
 
 #### 응답 Headers
 | Key | 예시 값 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| Content-Type | application/json | 응답 데이터가 JSON 형식임을 나타냄 |
 
 #### 실패
-- 401 Unauthorized (예시입니다 삭제하시고 본인 API에 맞는 걸로 변경하세요!)
+
+- 400 Bad Request (수정할 필드가 없는 경우)
 ```JSON
-...
+{"detail": "수정할 정보가 없습니다."}
 ```
+
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| detail | string | 수정할 정보가 없다는 오류 메시지 |
+
+- 401 Unauthorized
+```JSON
+{"detail": "인증 정보가 유효하지 않습니다."}
+```
+
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 인증 실패 메시지 |
+
+- 403 Forbidden (비활성 회원)
+```JSON
+{"detail": "비활성화된 계정입니다."}
+```
+
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 계정 비활성화 메시지 |
+
+- 403 Forbidden (대기자 권한: pending)
+```JSON
+{"detail": "접근 권한이 없습니다."}
+```
+
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 접근 권한 부족 메시지 |
+
+- 404 Not Found
+```JSON
+{"detail": "존재하지 않는 환자입니다."}
+```
+
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 존재하지 않는 환자에 대한 오류 메시지 |
+
+- 422 Unprocessable Entity
+```JSON
+{
+  "detail": [
+    {
+      "type": "string_too_long",
+      "loc": ["body", "name"],
+      "msg": "String should have at most 30 characters",
+      "input": "가나다라마바사아자차카타파하가나다라마바사아자차카타파하가나다",
+      "ctx": {
+        "max_length": 30
+      }
+    }
+  ]
+}
+```
+
+**경로 파라미터가 정수가 아닌 경우**
+```JSON
+{
+  "detail": [
+    {
+      "type": "int_parsing",
+      "loc": ["path", "patient_id"],
+      "msg": "Input should be a valid integer, unable to parse string as an integer",
+      "input": "abc"
+    }
+  ]
+}
+```
+
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | array | 검증 오류 목록 |
+| detail[].type | string | 오류 종류 |
+| detail[].loc | array | 오류가 발생한 위치 |
+| detail[].msg | string | 오류 메시지 |
+| detail[].input | any | 입력된 값 |
+| detail[].ctx | object | 검증 제한 조건 |
 
 ### 4) 비고
-- ...
+- 로그인한 staff 및 admin 권한의 사용자만 수정할 수 있으며, pending 권한은 접근할 수 없다.
+- 이름(name)과 연락처(phone)만 부분 수정하며, 나이와 성별은 수정할 수 없다.
+- 수정 성공 시 updated_at을 갱신한다.
+- patient_id가 정수가 아니거나 요청 필드의 검증 조건을 위반하면 422 오류를 반환한다.
+- 빈 요청 본문({})의 처리 방식은 팀원들과 협의 후 확정한다.
 
 
 ## 5. 환자 정보 삭제 (REQ-PTNT-005)
