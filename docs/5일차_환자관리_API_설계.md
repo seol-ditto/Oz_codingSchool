@@ -526,61 +526,153 @@
     ```
 
 ### 1) API 개요
+
 | 항목 | 내용 |
 | --- | --- |
-| API 이름 |  |
-| 설명 |  |
-| 엔드포인트(Endpoint) |  |
-| 메서드(Method) |  |
-| 인증 필요 여부 |  |
+| API 이름 | 환자 정보 삭제 |
+| 설명 | 로그인한 사용자가 특정 환자의 정보를 삭제하며, 해당 환자의 진료기록, X-Ray 이미지 및 AI 분석 결과도 함께 삭제한다. |
+| 엔드포인트(Endpoint) | `/api/v1/patients/{patient_id}` |
+| 메서드(Method) | DELETE |
+| 인증 필요 여부 | Y (staff 이상만 가능) |
+
+
 
 ### 2) 요청 (Request)
+
 #### Headers
 | Key | Value | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| Authorization | Bearer {access_token} | 로그인한 유저의 액세스 토큰 |
 
 #### 경로 파라미터
 | 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| patient_id | integer | Y | 삭제할 환자의 고유 ID |
 
 #### 본문 필드
 | 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| 없음 | - | - | 없음 |
 
 #### 쿼리 파라미터 (GET 요청 시)
 | 쿼리 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| 없음 | - | - | 없음 |
+
 
 ### 3) 응답 (Response)
+
 #### 성공
-- 200 OK (예시입니다 삭제하시고 본인 API에 맞는 걸로 변경하세요!)
+- 200 OK
+
 ```JSON
-...
+{
+  "message": "환자 정보가 삭제되었습니다."
+}
 ```
+
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| message | string | 환자 정보 삭제 완료 메시지 |
+
+
+
 
 #### 응답 Headers
 | Key | 예시 값 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| Content-Type | application/json | JSON 형식의 응답 |
+
 
 #### 실패
-- 401 Unauthorized (예시입니다 삭제하시고 본인 API에 맞는 걸로 변경하세요!)
-```JSON
-...
+
+- 401 Unauthorized (토큰 없음, 만료, 위조 또는 존재하지 않는 회원)
+
+```json
+{
+  "detail": "인증 정보가 유효하지 않습니다."
+}
 ```
+
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| detail | string | 인증 실패 메시지 |
+
+
+
+- 403 Forbidden (비활성화된 회원)
+
+```json
+{
+  "detail": "비활성화된 계정입니다."
+}
+```
+
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 비활성 계정 오류 메시지 |
+
+- 403 Forbidden (대기자 권한: pending)
+
+```json
+{
+  "detail": "접근 권한이 없습니다."
+}
+```
+
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 접근 권한 부족 메시지 |
+
+
+
+- 404 Not Found (존재하지 않는 환자)
+
+```json
+{
+  "detail": "존재하지 않는 환자입니다."
+}
+```
+
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 존재하지 않는 환자에 대한 오류 메시지 |
+
+
+
+- 422 Unprocessable Entity (환자 ID가 숫자가 아닌 경우)
+
+```json
+{
+  "detail": [
+    {
+      "type": "int_parsing",
+      "loc": ["path", "patient_id"],
+      "msg": "Input should be a valid integer, unable to parse string as an integer",
+      "input": "abc"
+    }
+  ]
+}
+```
+
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | array | 검증 오류 목록 |
+| detail[].type | string | 오류 종류 |
+| detail[].loc | array | 오류가 발생한 위치 |
+| detail[].msg | string | 오류 메시지 |
+| detail[].input | any | 입력된 값 |
+
 
 ### 4) 비고
-- ...
+
+- 권한: 로그인한 staff, admin 모두 삭제 가능하며, pending은 접근할 수 없다.
+- 삭제 전 사용자에게 관련 데이터가 모두 영구 삭제됨을 알리는 확인 팝업을 표시한다. 사용자가 최종 확인한 경우에만 삭제 API를 호출한다.
+- 환자 삭제 시 해당 환자의 진료기록, X-Ray 이미지 정보, AI 분석 결과는 DB의 CASCADE 설정을 통해 함께 삭제된다.
+- 서버에 저장된 X-Ray 이미지 파일은 API에서 직접 삭제한다.
+- 삭제된 데이터는 복구할 수 없다.
+- patient_id는 정수여야 하며, 숫자가 아닌 값이 전달되면 422 오류가 발생한다.
+- 환자 정보가 존재하지 않으면 404 오류를 반환한다.
 
 
 ## 6. 진료기록 등록 (REQ-MDR-001)
@@ -601,62 +693,225 @@
             • 촬영된 흉부 X-ray 이미지
     ```
 
+
 ### 1) API 개요
+
 | 항목 | 내용 |
 | --- | --- |
-| API 이름 |  |
-| 설명 |  |
-| 엔드포인트(Endpoint) |  |
-| 메서드(Method) |  |
-| 인증 필요 여부 |  |
+| API 이름 | 진료기록 등록 |
+| 설명 | 의료진이 특정 환자의 진료 차트 번호, 증상 및 흉부 X-Ray 이미지를 등록한다. |
+| 엔드포인트(Endpoint) | `/api/v1/patients/{patient_id}/medical-records` |
+| 메서드(Method) | POST |
+| 인증 필요 여부 | Y (의료진 staff 또는 admin만 가능) |
 
+#
 ### 2) 요청 (Request)
+
 #### Headers
 | Key | Value | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| Authorization | Bearer {access_token} | 로그인한 유저의 액세스 토큰 |
+| Content-Type | multipart/form-data | 진료정보와 X-Ray 이미지 파일을 함께 전송 |
 
 #### 경로 파라미터
 | 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| patient_id | integer | Y | 진료기록을 등록할 환자의 고유 ID |
 
 #### 본문 필드
 | 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| chart_number | string | Y | 진료 차트 번호 (최대 50자, 중복 불가) |
+| symptoms | string | Y | 환자의 진료 증상 |
+| image | file | Y | 촬영된 흉부 X-Ray 이미지 |
+| shooting_datetime | string | N | X-Ray 촬영 일시 (예: 2026-10-28T09:00:00) |
 
 #### 쿼리 파라미터 (GET 요청 시)
 | 쿼리 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| 없음 | - | - | 없음 |
+
 
 ### 3) 응답 (Response)
+
 #### 성공
-- 200 OK (예시입니다 삭제하시고 본인 API에 맞는 걸로 변경하세요!)
-```JSON
-...
+- 201 Created
+
+```json
+{
+  "id": 1,
+  "patient_id": 1,
+  "chart_number": "20261028001",
+  "symptoms": "기침 및 호흡곤란",
+  "image_url": "/uploads/xray/1.jpg",
+  "shooting_datetime": "2026-10-28T09:00:00",
+  "created_at": "2026-10-27T14:30:00",
+  "updated_at": null
+}
 ```
+
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| id | integer | 등록된 진료기록의 고유 ID |
+| patient_id | integer | 환자의 고유 ID |
+| chart_number | string | 진료 차트 번호 |
+| symptoms | string | 환자의 진료 증상 |
+| image_url | string | 업로드된 X-Ray 이미지의 접근 경로 |
+| shooting_datetime | string | X-Ray 촬영 일시 |
+| created_at | string | 진료기록 생성 일시 |
+| updated_at | string \| null | 진료기록 수정 일시 (수정 전에는 null) |
+
 
 #### 응답 Headers
 | Key | 예시 값 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| Content-Type | application/json | 등록된 진료기록 정보를 JSON 형식으로 반환 |
+
+
 
 #### 실패
-- 401 Unauthorized (예시입니다 삭제하시고 본인 API에 맞는 걸로 변경하세요!)
-```JSON
-...
+
+- 401 Unauthorized (토큰 없음, 만료, 위조 또는 존재하지 않는 회원)
+
+```json
+{
+  "detail": "인증 정보가 유효하지 않습니다."
+}
 ```
+
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| detail | string | 인증 실패 메시지 |
+
+
+
+- 403 Forbidden (비활성화된 회원)
+
+```json
+{
+  "detail": "비활성화된 계정입니다."
+}
+```
+
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 비활성 계정 오류 메시지 |
+
+- 403 Forbidden (대기자 권한: pending)
+
+```json
+{
+  "detail": "접근 권한이 없습니다."
+}
+```
+
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 접근 권한 부족 메시지 |
+
+- 403 Forbidden (의료진이 아닌 staff의 등록 시도)
+
+```json
+{
+  "detail": "의료진만 등록할 수 있습니다."
+}
+```
+
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 의료진 권한 부족 메시지 |
+
+
+
+- 404 Not Found (존재하지 않는 환자)
+
+```json
+{
+  "detail": "존재하지 않는 환자입니다."
+}
+```
+
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 존재하지 않는 환자에 대한 오류 메시지 |
+
+
+- 409 Conflict (진료 차트 번호 중복)
+
+```json
+{
+  "detail": "이미 존재하는 진료 차트 번호입니다."
+}
+```
+
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 진료 차트 번호 중복 오류 메시지 |
+
+
+
+- 422 Unprocessable Entity (필수 입력값 누락: chart_number)
+
+```json
+{
+  "detail": [
+    {
+      "type": "missing",
+      "loc": ["body", "chart_number"],
+      "msg": "Field required",
+      "input": {}
+    }
+  ]
+}
+```
+
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | array | 검증 오류 목록 |
+| detail[].type | string | 오류 종류 |
+| detail[].loc | array | 오류가 발생한 위치 |
+| detail[].msg | string | 오류 메시지 |
+| detail[].input | any | 입력된 값 |
+
+- 422 Unprocessable Entity (경로 파라미터 patient_id가 숫자가 아닌 경우)
+
+```json
+{
+  "detail": [
+    {
+      "type": "int_parsing",
+      "loc": ["path", "patient_id"],
+      "msg": "Input should be a valid integer, unable to parse string as an integer",
+      "input": "abc"
+    }
+  ]
+}
+```
+
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | array | 검증 오류 목록 |
+| detail[].type | string | 오류 종류 |
+| detail[].loc | array | 오류가 발생한 위치 |
+| detail[].msg | string | 오류 메시지 |
+| detail[].input | any | 입력된 값 |
+
 
 ### 4) 비고
-- ...
+
+- 권한: admin은 부서와 관계없이 등록할 수 있으며, staff는 medical 부서인 경우에만 등록할 수 있다. pending은 접근할 수 없다.
+- 진료기록 등록 시 chart_number, symptoms, image는 필수 입력값이다.
+- chart_number는 최대 50자이며, 중복 등록할 수 없다.
+- X-Ray 이미지는 진료기록 1개당 1장 등록한다.
+- X-Ray 이미지 업로드 시 미리보기는 브라우저에서 처리하며, 별도의 미리보기 API는 제공하지 않는다.
+- shooting_datetime은 선택 입력값이며, 입력하지 않으면 등록 시각으로 저장한다.
+- uploader_id는 요청으로 전달받지 않고, 로그인한 사용자의 ID를 서버에서 자동으로 저장한다.
+- patient_id는 정수여야 하며, 숫자가 아닌 값이 전달되면 422 오류가 발생한다.
+- 필수 입력값이 누락되거나 입력 형식이 올바르지 않으면 422 오류가 발생한다.
+- 존재하지 않는 환자에게 진료기록을 등록하려고 하면 404 오류를 반환한다.
+- 진료기록이 정상적으로 등록되면 201 Created를 반환한다.
+- 이미 등록된 진료 차트 번호로 요청하면 409 오류를 반환한다
+
 
 
 ## 7. 진료기록 목록 조회 (REQ-MDR-002)
