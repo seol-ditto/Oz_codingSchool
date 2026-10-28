@@ -114,59 +114,126 @@
 ### 1) API 개요
 | 항목 | 내용 |
 | --- | --- |
-| API 이름 |  |
-| 설명 |  |
-| 엔드포인트(Endpoint) |  |
-| 메서드(Method) |  |
-| 인증 필요 여부 |  |
+| API 이름 | 환자 정보 등록 |
+| 설명 | 이름, 나이, 성별, 연락처를 입력받아 신규 환자를 등록한다. 의료진(department가 medical인 staff) 또는 admin만 등록할 수 있다. |
+| 엔드포인트(Endpoint) | `/api/v1/patients` |
+| 메서드(Method) | POST |
+| 인증 필요 여부 | Y (의료진 staff 또는 admin만 가능) |
 
 ### 2) 요청 (Request)
 #### Headers
 | Key | Value | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| Authorization | Bearer {액세스 토큰} | 로그인한 유저의 액세스 토큰 |
+| Content-Type | application/json | 요청 본문 형식 |
 
 #### 경로 파라미터
 | 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| 없음 | - | - | 없음 |
 
 #### 본문 필드
 | 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| name | string | Y | 환자 이름. 최대 30자 |
+| age | integer	 | Y | 환자 나이. 0 이상의 숫자 |
+| gender | string | Y | 성별. M / F 중 하나 |
+| phone | string | Y | 환자 연락처(휴대폰 번호). 하이픈 없이 숫자만, 최대 11자리 (예: 01012345678) |
 
 #### 쿼리 파라미터 (GET 요청 시)
 | 쿼리 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| 없음 | - | - | 없음 |
 
 ### 3) 응답 (Response)
 #### 성공
-- 200 OK (예시입니다 삭제하시고 본인 API에 맞는 걸로 변경하세요!)
+- 201 Created
 ```JSON
-...
+{
+  "id": 1,
+  "name": "김오즈",
+  "age": 27,
+  "gender": "F",
+  "phone": "010-1234-5678",
+  "created_at": "2026-10-27T14:30:00",
+  "updated_at": null
+}
 ```
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| id | integer | 환자 고유 ID |
+| name | string | 환자 이름 |
+| age | integer | 환자 나이 |
+| gender | string | 성별 (M / F) |
+| phone | string | 환자 연락처 |
+| created_at | string | 생성일시 (예: 2026-10-27T14:30:00) |
+| updated_at | string \| null | 수정일시. 등록 직후에는 수정 이력이 없어 null |
 
 #### 응답 Headers
 | Key | 예시 값 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| Content-Type | application/json | 응답 본문 형식 |
 
 #### 실패
-- 401 Unauthorized (예시입니다 삭제하시고 본인 API에 맞는 걸로 변경하세요!)
+- 401 Unauthorized (토큰 없음 / 만료 / 위조, 없는 회원)
 ```JSON
-...
+{"detail": "인증 정보가 유효하지 않습니다."}
 ```
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| detail | string | 에러 메시지 |
+
+- 403 Forbidden (비활성 회원)
+```JSON
+{"detail": "비활성화된 계정입니다."}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 에러 메시지 |
+
+- 403 Forbidden (대기자 권한: pending)
+```JSON
+{"detail": "접근 권한이 없습니다."}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 에러 메시지 |
+
+- 403 Forbidden (의료진이 아닌 staff의 등록 시도)
+```JSON
+{"detail": "의료진만 등록할 수 있습니다."}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 에러 메시지 |
+
+- 422 Unprocessable Entity (필수값 누락 / 형식 오류, FastAPI 자동 응답)
+```JSON
+{
+  "detail": [
+    {
+      "type": "missing",
+      "loc": ["body", "name"],
+      "msg": "Field required",
+      "input": {}
+    }
+  ]
+}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | array | 검증 오류 목록 |
+| detail[].type | string | 오류 종류 |
+| detail[].loc | array | 오류가 발생한 위치 |
+| detail[].msg | string | 오류 메시지 |
+| detail[].input | any | 입력된 값 |
+
+
 
 ### 4) 비고
-- ...
+- 등록 가능한 유저: admin은 부서와 상관없이 가능, staff는 부서가 medical인 경우만 가능, pending은 불가
+- 이름 30자 초과, 나이 음수, 성별이 M / F가 아닌 값, 연락처에 숫자 외 문자(하이픈 포함)가 있거나 11자리 초과인 경우 422
+- 환자 등록 시 생성일시(created_at)는 서버가 저장한 등록 시각이며, 요청으로 받지 않는다.
 
 
 ## 2. 환자 목록 조회 (REQ-PTNT-002)
@@ -192,60 +259,122 @@
 ### 1) API 개요
 | 항목 | 내용 |
 | --- | --- |
-| API 이름 |  |
-| 설명 |  |
-| 엔드포인트(Endpoint) |  |
-| 메서드(Method) |  |
-| 인증 필요 여부 |  |
+| API 이름 | 환자 목록 조회 |
+| 설명 | 등록된 환자를 목록으로 조회한다. 이름 검색, 성별 필터, 나이 범위 필터를 사용할 수 있다. |
+| 엔드포인트(Endpoint) | `/api/v1/patients` |
+| 메서드(Method) | GET |
+| 인증 필요 여부 | Y (staff 이상만 가능) |
 
 ### 2) 요청 (Request)
 #### Headers
 | Key | Value | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| Authorization | Bearer {액세스 토큰} | 로그인한 유저의 액세스 토큰 |
 
 #### 경로 파라미터
 | 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| 없음 | - | - | 없음 |
 
 #### 본문 필드
 | 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| 없음 | - | - | 없음 |
 
 #### 쿼리 파라미터 (GET 요청 시)
 | 쿼리 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| name | string | N | 환자 이름 검색어 (일부만 입력해도 검색 가능) |
+| gender | string | N | 성별 필터. M / F 중 하나 |
+| min_age | integer | N | 나이 범위 필터의 최소 나이 (이상, 0 이상의 숫자) |
+| max_age | integer | N | 나이 범위 필터의 최대 나이 (이하, 0 이상의 숫자) |
 
 ### 3) 응답 (Response)
 #### 성공
-- 200 OK (예시입니다 삭제하시고 본인 API에 맞는 걸로 변경하세요!)
+- 200 OK
 ```JSON
-...
+[
+  {
+    "id": 1,
+    "name": "김오즈",
+    "age": 27,
+    "gender": "F",
+    "phone": "010-1234-5678",
+    "created_at": "2026-10-27T14:30:00",
+    "updated_at": null
+  }
+]
 ```
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| id | integer | 환자 고유 ID |
+| name | string | 환자 이름 |
+| age | integer | 환자 나이 |
+| gender | string | 성별 (M / F) |
+| phone | string | 환자 연락처 |
+| created_at | string | 생성일시 (예: 2026-10-27T14:30:00) |
+| updated_at | string \| null | 수정일시. 수정 이력이 없으면 null |
 
 #### 응답 Headers
 | Key | 예시 값 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| Content-Type | application/json | 응답 본문 형식 |
 
 #### 실패
-- 401 Unauthorized (예시입니다 삭제하시고 본인 API에 맞는 걸로 변경하세요!)
+- 401 Unauthorized (토큰 없음 / 만료 / 위조, 없는 회원)
 ```JSON
-...
+{"detail": "인증 정보가 유효하지 않습니다."}
 ```
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| detail | string | 에러 메시지 |
+
+- 403 Forbidden (비활성 회원)
+```JSON
+{"detail": "비활성화된 계정입니다."}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 에러 메시지 |
+
+- 403 Forbidden (대기자 권한: pending)
+```JSON
+{"detail": "접근 권한이 없습니다."}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 에러 메시지 |
+
+- 422 Unprocessable Entity (쿼리 파라미터 형식 오류, FastAPI 자동 응답)
+```JSON
+{
+  "detail": [
+    {
+      "type": "enum",
+      "loc": ["query", "gender"],
+      "msg": "Input should be 'M' or 'F'",
+      "input": "X"
+    }
+  ]
+}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | array | 검증 오류 목록 |
+| detail[].type | string | 검증 오류 목록 |
+| detail[].loc | array | 오류가 발생한 위치 |
+| detail[].msg | string | 오류 메시지 |
+| detail[].input | any | 입력된 값 |
+
 
 ### 4) 비고
-- ...
-
+- staff, admin 모두 부서와 상관없이 조회할 수 있고, pending은 불가
+- 쿼리 파라미터를 하나도 안 보내면 전체 환자를 조회
+- 여러 조건을 함께 보내면 모두 만족하는 환자만 조회 (예: name과 gender를 같이 보내면 둘 다 만족)
+- min_age와 max_age는 각각 단독으로도 사용 가능하며, 둘 다 보내면 그 사이(양끝 포함)의 환자만 조회
+- 검색 결과가 없으면 빈 목록 []을 반환 (200)
+- gender 값이 M / F가 아니거나, 나이가 숫자가 아니거나 음수인 경우 422
+- 쿼리 파라미터 예시: `/api/v1/patients?name=김&gender=M&min_age=30&max_age=50`
 
 ## 3. 환자 정보 상세 조회 (REQ-PTNT-003)
 - 담당: 이지희
