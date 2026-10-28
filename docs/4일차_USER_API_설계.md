@@ -32,7 +32,7 @@
 - 해당 없는 칸(예: 쿼리 파라미터, 응답 Headers)은 지우지 말고, 설명에 "없음"으로 적기
 - 실패 응답이 여러 개면 실패 블록을 복사해서 추가하기
 ### 엔드포인트(url) 규칙
-- 가입/로그인/토큰/로그아웃 : `/api/v1/auth/...`
+- 가입/로그인/토큰/로그아웃: `/api/v1/auth/...`
 - 본인 관련: `/api/v1/users/me`
 - 어드민: `/api/v1/admin/users`
 ### 필드 이름
@@ -50,12 +50,15 @@
     - 개발: develop
 ### 에러 형식
 - 에러 메시지는 `{"detail": "메시지"}` 모양으로 한 줄로 적기
-- 단, 422(필수값 누락/형식 오류)는 FastAPI가 자동으로 보내는 에러기때문에 예시 명세서의 422 모양을 그대로 복사하기
+- 인증이 필요한 API는 비활성 회원이면 403 `{"detail": "비활성화된 계정입니다."}`
+- 단, 422(필수값 누락/형식 오류)는 FastAPI가 자동으로 보내는 에러이기 때문에 예시 명세서의 422 모양을 그대로 복사하기
 
 ### NFR-USER-002 비밀번호 입력 보안
 - 비밀번호 입력 시 마스킹 처리, 보기 아이콘 클릭할 때만 확인 가능(화면 처리, 별도 API 없음)
 ### NFR-USER-003 API 성능
 - 모든 유저 API는 최대 3초 이내에 로직 처리하고 응답한다.
+
+
 ## 1. 회원가입 (REQ-USER-001)
 - 담당: 홍시윤
 - 요구사항
@@ -139,6 +142,16 @@
 - 409 Conflict (이메일 중복)
 ```JSON
 {"detail": "이미 사용 중인 이메일입니다."}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 에러 메시지 |
+
+<br>
+
+- 409 Conflict (휴대폰 번호 중복)
+```JSON
+{"detail": "이미 사용 중인 휴대폰 번호입니다."}
 ```
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
@@ -305,7 +318,7 @@
 #### Headers
 | Key | Value | 설명 |
 | --- | --- | --- |
-| Cookie	 | `refresh_token={refresh_token}` | 로그인 시 발급된 리프레시 토큰. 브라우저가 자동 전송 (클라이언트 요청 시 credentials: "include" 설정 필요) |
+| Cookie | `refresh_token={refresh_token}` | 로그인 시 발급된 리프레시 토큰. 브라우저가 자동 전송 (클라이언트 요청 시 credentials: "include" 설정 필요) |
 
 #### 본문 필드
 | 파라미터명 | 타입 | 필수(Y/N) | 설명 |
@@ -384,10 +397,10 @@
 | 항목 | 내용 |
 | --- | --- |
 | API 이름 | 로그아웃 |
-| 설명 | 로그인한 사용자의 Refresh Token 쿠키를 만료 처리하여 로그아웃한다. |
+| 설명 | 로그인한 사용자의 리프레시 토큰 쿠키를 만료 처리하여 로그아웃한다. |
 | 엔드포인트(Endpoint) | `/api/v1/auth/logout` |
 | 메서드(Method) | POST |
-| 인증 필요 여부 | Y (JWT Access Token) |
+| 인증 필요 여부 | Y (로그인 필요) |
 
 ### 2) 요청 (Request)
 #### Headers
@@ -421,7 +434,7 @@
 | Key | 예시 값 | 설명 |
 | --- | --- | --- |
 | Content-Type | application/json | 응답 데이터가 JSON 형식임을 나타냄 |
-| Set-Cookie | refresh_token=; Max-Age=0; Path=/api/v1/auth; HttpOnly; Secure; SameSite=Lax | Refresh Token 쿠키 만료 처리 |
+| Set-Cookie | refresh_token=; Max-Age=0; Path=/api/v1/auth; HttpOnly; Secure; SameSite=Lax | 리프레시 토큰 쿠키 만료 처리 |
 
 #### 실패
 
@@ -439,9 +452,9 @@
 
 ### 4) 비고
 - 로그인한 사용자는 상단 헤더의 로그아웃 버튼을 통해 로그아웃할 수 있다.
-- 로그아웃 성공 시 프론트엔드에서 보관 중인 Access Token을 삭제하고 로그인 페이지로 이동한다.
-- 서버는 로그아웃 응답에서 Refresh Token 쿠키를 만료 처리한다.
-- Refresh Token 쿠키 삭제 시 로그인 API와 동일한 쿠키 이름(refresh_token)과 경로(Path=/api/v1/auth)를 사용한다.
+- 로그아웃 성공 시 프론트엔드에서 보관 중인 액세스 토큰을 삭제하고 로그인 페이지로 이동한다.
+- 서버는 로그아웃 응답에서 리프레시 토큰 쿠키를 만료 처리한다.
+- 리프레시 토큰 쿠키 삭제 시 로그인 API와 동일한 쿠키 이름(refresh_token)과 경로(Path=/api/v1/auth)를 사용한다.
 
 
 ## 5. 회원 탈퇴 (REQ-USER-009)
@@ -480,7 +493,6 @@
 
 ### 3) 응답 (Response)
 #### 성공
-#### 성공
 - 200 OK
 
 ```JSON
@@ -490,10 +502,12 @@
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
 | message | string | 회원 탈퇴 완료 메시지 |
+
 #### 응답 Headers
 | Key | 예시 값 | 설명 |
 | --- | --- | --- |
 | Content-Type | application/json | 응답 본문 형식 |
+| Set-Cookie | refresh_token=; Max-Age=0; Path=/api/v1/auth; HttpOnly; Secure; SameSite=Lax | 리프레시 토큰 쿠키 만료 처리 |
 
 #### 실패
 - 401 Unauthorized (토큰이 없거나 유효하지 않은 경우)
@@ -553,8 +567,6 @@
 | 없음 | - | - | 없음 |
 
 ### 3) 응답 (Response)
-#### 성공
-
 #### 성공
 - 200 OK
 
@@ -623,20 +635,21 @@
 | 설명 | 로그인한 사용자가 본인의 부서 및 휴대폰 번호를 부분 수정한다. |
 | 엔드포인트(Endpoint) | `/api/v1/users/me` |
 | 메서드(Method) | PATCH |
-| 인증 필요 여부 | Y (JWT Access Token) |
+| 인증 필요 여부 | Y (로그인 필요) |
 
 ### 2) 요청 (Request)
 #### Headers
 | Key | Value | 설명 |
 | --- | --- | --- |
-| Authorization | Bearer {access_token} | 로그인 사용자 인증을 위한 JWT 엑세스 토큰 |
-| Content-Type | application/json | 요청 본문이 JSON 형식임을 나타냄|
+| Authorization | Bearer {access_token} | 로그인 사용자 인증을 위한 JWT 액세스 토큰 |
+| Content-Type | application/json | 요청 본문이 JSON 형식임을 나타냄 |
 
 #### 본문 필드
 | 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
 | department | string | N | 변경할 부서 (research, medical, develop) |
 | phone_number | string | N | 변경할 휴대폰 번호 |
+
 #### 쿼리 파라미터 (GET 요청 시)
 | 쿼리 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
@@ -661,10 +674,10 @@
 | --- | --- | --- |
 | name | string | 회원 이름 |
 | email | string | 회원 이메일 |
-| department | string | 회원 부서 |
-| gender | string | 회원 성별 (M/F)|
+| department | string | 회원 부서 (research / medical / develop) |
+| gender | string | 회원 성별 (M / F) |
 | phone_number | string | 회원 휴대폰 번호 |
-| role | string | 회원 권한 (pending, staff, admin) | 
+| role | string | 회원 권한 (pending / staff / admin) |
 
 #### 응답 Headers
 | Key | 예시 값 | 설명 |
@@ -681,12 +694,22 @@
 | --- | --- | --- |
 | detail | string | 인증 실패 사유 |
 
-- 422 Unprocessable Entity
+
+- 409 Conflict (휴대폰 번호 중복)
+```JSON
+{"detail": "이미 사용 중인 휴대폰 번호입니다."}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 에러 메시지 |
+
+
+- 422 Unprocessable Entity (부서 값이 research, medical, develop이 아닌 경우)
 ```json
 {
     "detail": [
         {
-            "type": "literal_error",
+            "type": "enum",
             "loc": ["body", "department"],
             "msg": "Input should be 'research', 'medical' or 'develop'",
             "input": "sales"
@@ -696,11 +719,11 @@
 ```
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-| detail | array | 요청 데이터 검증 오류 목록 |
-| type | string | 검증 오류 유형 |
-| loc | array | 오류가 발생한 필드 위치 |
-| msg | string | 검증 오류 메시지 |
-| input | string | 검증에 실패한 입력값 |
+| detail | array | 검증 오류 목록 |
+| detail[].type | string | 오류 종류 |
+| detail[].loc | array | 오류가 발생한 위치 |
+| detail[].msg | string | 오류 메시지 |
+| detail[].input | any | 입력된 값 |
 
 ### 4) 비고
 - department와 phone_number만 부분 수정할 수 있다.
@@ -728,7 +751,7 @@
 | 설명 | 로그인한 사용자가 현재 비밀번호를 확인한 후 새 비밀번호로 변경한다. |
 | 엔드포인트(Endpoint) | `/api/v1/users/me/password` |
 | 메서드(Method) | PATCH |
-| 인증 필요 여부 | Y (JWT Access Token) |
+| 인증 필요 여부 | Y (로그인 필요) |
 
 ### 2) 요청 (Request)
 #### Headers
@@ -766,16 +789,6 @@
 | Content-Type | application/json | 응답 데이터가 JSON 형식임을 나타냄 |
 
 #### 실패
-- 401 Unauthorized (로그인 인증 실패)
-
-```json
-{"detail": "인증 정보가 유효하지 않습니다."}
-```
-
-| 필드명 | 타입 | 설명 |
-| --- | --- | --- |
-| detail | string | 인증 실패 사유 |
-
 - 400 Bad Request (현재 비밀번호 불일치)
 
 ```json
@@ -785,6 +798,17 @@
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
 | detail | string | 비밀번호 확인 실패 사유 |
+
+
+- 401 Unauthorized (로그인 인증 실패)
+
+```json
+{"detail": "인증 정보가 유효하지 않습니다."}
+```
+
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 인증 실패 사유 |
 
 
 - 422 Unprocessable Entity (요청 데이터 검증 실패)
@@ -803,15 +827,16 @@
 
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-| detail | array | 요청 데이터 검증 오류 목록 |
-| type | string | 검증 오류 유형 |
-| loc | array | 오류가 발생한 필드 위치 |
-| msg | string | 검증 오류 메시지 |
+| detail | array | 검증 오류 목록 |
+| detail[].type | string | 오류 종류 |
+| detail[].loc | array | 오류가 발생한 위치 |
+| detail[].msg | string | 오류 메시지 |
 
 ### 4) 비고
 - 현재 비밀번호가 일치하는 경우에만 새 비밀번호로 변경한다.
 - 비밀번호는 응답 데이터에 포함하지 않는다.
-- 비밀번호 관련 입력값이 오류 응답에 노출되지 않도록 처리한다. 
+- 비밀번호 관련 입력값이 오류 응답에 노출되지 않도록 처리한다.
+- 보안상 422 응답에서 input(입력값) 필드는 제외한다.
 
 
 ## 9. 회원 목록 조회 (REQ-USER-004)
@@ -852,7 +877,7 @@
 #### 본문 필드
 | 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-| - |  |  | 요청 본문을 사용하지 않음 |
+| 없음 | - | - | 요청 본문 없음 |
 
 #### 쿼리 파라미터 (GET 요청 시)
 | 쿼리 파라미터명 | 타입 | 필수(Y/N) | 설명 |
@@ -889,7 +914,7 @@
 #### 응답 Headers
 | Key | 예시 값 | 설명 |
 | --- | --- | --- |
-| - |  | 없음 |
+| Content-Type | application/json | 응답 본문 형식 |
 
 #### 실패
 - 401 Unauthorized
@@ -908,24 +933,26 @@
 | --- | --- | --- |
 | detail | string | 어드민이 아닌 유저가 요청한 경우 |
 
-- 422 Unprocessable Entity
+- 422 Unprocessable Entity (부서 값이 research, medical, develop이 아닌 경우)
 ```JSON
 {
   "detail": [
     {
+      "type": "enum",
       "loc": ["query", "department"],
       "msg": "Input should be 'research', 'medical' or 'develop'",
-      "type": "enum"
+      "input": "sales"
     }
   ]
 }
 ```
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-| detail | array | 부서 값이 정해진 3개가 아닌 경우 |
-| detail[].loc | array | 오류가 발생한 필드 위치 |
-| detail[].msg | string | 오류 내용 |
+| detail | array | 검증 오류 목록 |
 | detail[].type | string | 오류 종류 |
+| detail[].loc | array | 오류가 발생한 위치 |
+| detail[].msg | string | 오류 메시지 |
+| detail[].input | any | 입력된 값 |
 
 ### 4) 비고
 - 어드민 권한(admin) 유저만 호출 가능
@@ -975,7 +1002,7 @@
 #### 쿼리 파라미터 (GET 요청 시)
 | 쿼리 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-| - |  |  | 없음 |
+| 없음 | - | - | 없음 |
 
 ### 3) 응답 (Response)
 #### 성공
@@ -998,9 +1025,14 @@
 #### 응답 Headers
 | Key | 예시 값 | 설명 |
 | --- | --- | --- |
-| - |  | 없음 |
+| Content-Type | application/json | 응답 본문 형식 |
 
 #### 실패
+- 400 Bad Request (본인 권한 변경 시도)
+```JSON
+{"detail": "본인의 권한은 변경할 수 없습니다."}
+```
+
 - 401 Unauthorized
 ```JSON
 {"detail": "인증 정보가 유효하지 않습니다."}
@@ -1025,26 +1057,29 @@
 | --- | --- | --- |
 | detail | string | 해당 user_id의 회원이 없는 경우 |
 
-- 422 Unprocessable Entity
+- 422 Unprocessable Entity (권한 값이 pending, staff, admin이 아닌 경우)
 ```JSON
 {
   "detail": [
     {
+      "type": "enum",
       "loc": ["body", "role"],
       "msg": "Input should be 'pending', 'staff' or 'admin'",
-      "type": "enum"
+      "input": "manager"
     }
   ]
 }
 ```
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-| detail | array | role 값이 정해진 3개가 아니거나 누락된 경우 |
-| detail[].loc | array | 오류가 발생한 필드 위치 |
-| detail[].msg | string | 오류 내용 |
+| detail | array | 검증 오류 목록 |
 | detail[].type | string | 오류 종류 |
+| detail[].loc | array | 오류가 발생한 위치 |
+| detail[].msg | string | 오류 메시지 |
+| detail[].input | any | 입력된 값 |
 
 ### 4) 비고
 - 어드민 권한(admin) 유저만 호출 가능
 - 한 번에 회원 한 명의 권한만 변경
+- 어드민이 없어지는 상황을 막기 위해 본인 권한은 변경할 수 없음
 - 변경 가능한 권한 : pending(대기자), staff(스태프), admin(어드민)
