@@ -427,24 +427,18 @@
 - 200 OK
 ```JSON
 {
-  "id": 1,
   "name": "김오즈",
   "age": 27,
   "gender": "F",
-  "phone": "01012345678",
-  "created_at": "2026-10-27T14:30:00",
-  "updated_at": null
+  "phone": "01012345678"
 }
 ```
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-| id | integer | 환자 고유 ID |
 | name | string | 환자 이름 |
 | age | integer | 환자 나이 |
 | gender | string | 성별 (M / F) |
 | phone | string | 환자 연락처 (하이픈 없이 숫자만) |
-| created_at | string | 생성일시 (예: 2026-10-27T14:30:00) |
-| updated_at | string \| null | 수정일시. 수정 이력이 없으면 null |
 
 #### 응답 Headers
 | Key | 예시 값 | 설명 |
@@ -559,24 +553,18 @@
 - 200 OK
 ```JSON
 {
-  "id": 1,
   "name": "김오즈",
   "age": 27,
   "gender": "F",
-  "phone": "01012345678",
-  "created_at": "2026-10-27T14:30:00",
-  "updated_at": "2026-10-28T09:30:00"
+  "phone": "01012345678"
 }
 ```
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-| id | integer | 환자 고유 ID |
 | name | string | 환자 이름 |
 | age | integer | 환자 나이 |
 | gender | string | 성별 (M / F) |
 | phone | string | 환자 연락처 |
-| created_at | string | 생성일시 (예: 2026-10-27T14:30:00) |
-| updated_at | string \| null | 수정일시. 수정 이력이 없으면 null |
 
 #### 응답 Headers
 | Key | 예시 값 | 설명 |
