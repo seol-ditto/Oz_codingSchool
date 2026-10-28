@@ -707,6 +707,19 @@
 | detail | string | 존재하지 않는 환자에 대한 오류 메시지 |
 
 
+- 409 Conflict (진료 차트 번호 중복)
+
+```json
+{
+  "detail": "이미 존재하는 진료 차트 번호입니다."
+}
+```
+
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 진료 차트 번호 중복 오류 메시지 |
+
+
 
 - 422 Unprocessable Entity (필수 입력값 누락: chart_number)
 
