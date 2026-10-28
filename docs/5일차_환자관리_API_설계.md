@@ -154,7 +154,7 @@
   "name": "김오즈",
   "age": 27,
   "gender": "F",
-  "phone": "010-1234-5678",
+  "phone": "01012345678",
   "created_at": "2026-10-27T14:30:00",
   "updated_at": null
 }
@@ -299,7 +299,7 @@
     "name": "김오즈",
     "age": 27,
     "gender": "F",
-    "phone": "010-1234-5678",
+    "phone": "01012345678",
     "created_at": "2026-10-27T14:30:00",
     "updated_at": null
   }
