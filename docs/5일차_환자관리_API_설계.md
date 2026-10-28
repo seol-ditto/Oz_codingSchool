@@ -17,7 +17,7 @@
 ### 작성 규칙
 - 해당 없는 칸(예: 경로 파라미터, 쿼리 파라미터, 응답 Headers)은 지우지 말고 `없음 | - | - | 없음`처럼 적기
 - 실패 응답이 여러 개면 실패 블록을 복사해서 추가하기
-- 인증 필요 여부는 `N (비로그인 상태에서 호출)` / `Y (로그인 필요)` / `Y (의료인 권한만 가능)`처럼 적기
+- 인증 필요 여부는 `N (비로그인 상태에서 호출)` / `Y (로그인 필요)` / `Y (staff 이상만 가능)`처럼 적기
 - 용어는 한글로 통일: 액세스 토큰, 리프레시 토큰
 - 파일 업로드(X-Ray 이미지)가 있는 요청은 Content-Type이 `multipart/form-data`
 
@@ -930,59 +930,117 @@
 ### 1) API 개요
 | 항목 | 내용 |
 | --- | --- |
-| API 이름 |  |
-| 설명 |  |
-| 엔드포인트(Endpoint) |  |
-| 메서드(Method) |  |
-| 인증 필요 여부 |  |
+| API 이름 | 진료기록 목록 조회 |
+| 설명 | 환자 상세 페이지에서 해당 환자의 진료기록 목록을 조회한다. 증상은 100자 초과 시 생략해서 반환한다. |
+| 엔드포인트(Endpoint) | `/api/v1/patients/{patient_id}/medical-records` |
+| 메서드(Method) | GET |
+| 인증 필요 여부 | Y (staff 이상만 가능) |
 
 ### 2) 요청 (Request)
 #### Headers
 | Key | Value | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| Authorization | Bearer {access_token} | 로그인한 유저의 액세스 토큰 |
 
 #### 경로 파라미터
 | 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| patient_id | integer | Y | 진료기록을 조회할 환자의 고유 ID |
 
 #### 본문 필드
 | 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| 없음 | - | - | 요청 본문 없음 |
 
 #### 쿼리 파라미터 (GET 요청 시)
 | 쿼리 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| 없음 | - | - | 없음 |
 
 ### 3) 응답 (Response)
 #### 성공
-- 200 OK (예시입니다 삭제하시고 본인 API에 맞는 걸로 변경하세요!)
+- 200 OK
 ```JSON
-...
+[
+    {
+        "id": 1,
+        "chart_number": "20261028001",
+        "symptoms": "기침과 발열이 3일간 지속되며...",
+        "created_at": "2026-10-28T14:30:00"
+    }
+]
 ```
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| id | integer | 진료기록 고유 ID |
+| chart_number | string | 진료 차트 넘버 |
+| symptoms | string | 증상 (100자 초과 시 앞 100자 + `...`) |
+| created_at | string | 생성일시 (예: 2026-10-28T14:30:00) |
 
 #### 응답 Headers
 | Key | 예시 값 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| Content-Type | application/json | 응답 본문 형식 |
 
 #### 실패
-- 401 Unauthorized (예시입니다 삭제하시고 본인 API에 맞는 걸로 변경하세요!)
+- 401 Unauthorized
 ```JSON
-...
+{"detail": "인증 정보가 유효하지 않습니다."}
 ```
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| detail | string | 토큰이 없거나 만료된 경우 |
+
+- 403 Forbidden
+```JSON
+{"detail": "비활성화된 계정입니다."}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 계정이 비활성화된 경우 |
+
+- 403 Forbidden
+```JSON
+{"detail": "접근 권한이 없습니다."}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 스태프나 어드민이 아닌 유저가 요청한 경우 |
+
+- 404 Not Found
+```JSON
+{"detail": "존재하지 않는 환자입니다."}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 해당 `patient_id`의 환자가 없는 경우 |
+
+- 422 Unprocessable Entity (`patient_id`가 숫자가 아닌 경우)
+```JSON
+{
+  "detail": [
+    {
+      "type": "int_parsing",
+      "loc": ["path", "patient_id"],
+      "msg": "Input should be a valid integer, unable to parse string as an integer",
+      "input": "abc"
+    }
+  ]
+}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | array | 검증 오류 목록 |
+| detail[].type | string | 오류 종류 |
+| detail[].loc | array | 오류가 발생한 위치 |
+| detail[].msg | string | 오류 메시지 |
+| detail[].input | any | 입력된 값 |
 
 ### 4) 비고
-- ...
+- staff, admin 모두 부서와 상관없이 조회 가능, pending은 불가
+- 증상이 100자를 넘으면 앞 100자만 잘라 끝에 `...`을 붙여 반환(상세 조회에서는 전체 반환)
+- 해당 환자의 진료기록이 없으면 빈 목록 [] 반환 (200)
+- 최신 진료기록이 먼저 오도록 생성일시 내림차순 정렬
 
 
 ## 8. 진료기록 상세 조회 (REQ-MDR-003)
@@ -1004,56 +1062,114 @@
 ### 1) API 개요
 | 항목 | 내용 |
 | --- | --- |
-| API 이름 |  |
-| 설명 |  |
-| 엔드포인트(Endpoint) |  |
-| 메서드(Method) |  |
-| 인증 필요 여부 |  |
+| API 이름 | 진료기록 상세 조회 |
+| 설명 | 진료기록 하나의 상세 정보를 흉부 X-Ray 이미지와 함께 조회한다 |
+| 엔드포인트(Endpoint) | `/api/v1/medical-records/{record_id}` |
+| 메서드(Method) | GET |
+| 인증 필요 여부 | Y (staff 이상만 가능) |
 
 ### 2) 요청 (Request)
 #### Headers
 | Key | Value | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| Authorization | Bearer {access_token} | 로그인한 유저의 액세스 토큰 |
 
 #### 경로 파라미터
 | 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| record_id | integer | Y | 조회할 진료기록 고유 ID |
 
 #### 본문 필드
 | 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| 없음 | - | - | 요청 본문 없음 |
 
 #### 쿼리 파라미터 (GET 요청 시)
 | 쿼리 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| 없음 | - | - | 없음 |
 
 ### 3) 응답 (Response)
 #### 성공
-- 200 OK (예시입니다 삭제하시고 본인 API에 맞는 걸로 변경하세요!)
+- 200 OK
 ```JSON
-...
+{
+    "id": "1",
+    "chart_number": "20261028001",
+    "symptoms": "기침과 발열이 3일간 지속되며 호흡 시 흉통을 호소함.",
+    "image_url": "https://example.com/xray/1.png",
+    "created_at": "2026-10-28T14:30:00"
+}
 ```
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| id | integer | 진료기록 고유 ID |
+| chart_number | string | 진료 차트 넘버 |
+| symptoms | string | 증상 (생략 없이 전체) |
+| image_url | string | 흉부 X-Ray 이미지 URL |
+| created_at | string | 생성일시 (예: 2026-10-28T14:30:00) |
 
 #### 응답 Headers
 | Key | 예시 값 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| Content-Type | application/json | 응답 본문 형식 |
 
 #### 실패
-- 401 Unauthorized (예시입니다 삭제하시고 본인 API에 맞는 걸로 변경하세요!)
+- 401 Unauthorized
 ```JSON
-...
+{"detail": "인증 정보가 유효하지 않습니다."}
 ```
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| detail | string | 토큰이 없거나 만료된 경우 |
+
+- 403 Forbidden
+```JSON
+{"detail": "비활성화된 계정입니다."}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 계정이 비활성화된 경우 |
+
+- 403 Forbidden
+```JSON
+{"detail": "접근 권한이 없습니다."}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 스태프, 어드민이 아닌 유저가 요청한 경우 |
+
+- 404 Not Found
+```JSON
+{"detail": "존재하지 않는 진료기록입니다."}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 해당 `record_id`의 진료기록이 없는 경우 |
+
+- 422 Unprocessable Entity (record_id 값이 숫자가 아닌 경우)
+```JSON
+{
+  "detail": [
+    {
+      "type": "int_parsing",
+      "loc": ["path", "record_id"],
+      "msg": "Input should be a valid integer, unable to parse string as an integer",
+      "input": "abc"
+    }
+  ]
+}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | array | 검증 오류 목록 |
+| detail[].type | string | 오류 종류 |
+| detail[].loc | array | 오류가 발생한 위치 |
+| detail[].msg | string | 오류 메시지 |
+| detail[].input | any | 입력된 값 |
 
 ### 4) 비고
-- ...
+- staff, admin 모두 부서와 상관없이 조회 가능, pending은 불가
+- 증상은 목록 조회와 달리 생략 없이 전체를 반환
+- 진료기록 1개당 X-Ray 이미지는 1장이며, image_url은 해당 진료기록의 X-Ray 이미지 정보에서 가져옴
+- record_id가 숫자가 아니면 422 오류를 반환
