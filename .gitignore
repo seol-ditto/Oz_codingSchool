@@ -24,3 +24,11 @@ envs/
 
 # mac OS 숨김파일
 .DS_Store
+
+# 업로드 이미지 (X-Ray, 히트맵)
+private_uploads/
+
+# 모델 가중치 (드라이브로 공유)
+worker/models/*
+# Git은 빈 폴더를 못 올리기 때문에 폴더가 있다는 표시로 얘는 올리도록 설정
+!worker/models/.gitkeep
