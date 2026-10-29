@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 # ===== [시윤] 환자 정보 등록 / 환자 목록 조회 =====
@@ -18,18 +18,23 @@ class PatientUpdateRequest(BaseModel):
     name: str | None = Field(default=None, max_length=30)
     phone: str | None = Field(default=None, max_length=11, pattern=r"^[0-9]+$")
 
+    @field_validator("name", "phone")
+    @classmethod
+    def reject_null(cls, value):
+        if value is None:
+            raise ValueError("null은 입력할 수 없습니다.")
+        return value
+
 
 # 환자 정보 상세 조회 및 수정 응답
-class PatientResponse(BaseModel):
+class PatientDetailResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: int
     name: str
     age: int
     gender: str | None
     phone: str
-    created_at: datetime
-    updated_at: datetime | None
+
 
 
 # ===== [지수] 환자 정보 삭제 =====

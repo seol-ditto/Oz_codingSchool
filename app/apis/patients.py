@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from app.apis.dependencies import DBSession, StaffUser
 from app.models.patients import Patient
-from app.schemas.patients import PatientResponse, PatientUpdateRequest
+from app.schemas.patients import PatientDetailResponse, PatientUpdateRequest
 
 
 router = APIRouter(prefix="/api/v1/patients", tags=["patients"])
@@ -18,7 +18,11 @@ router = APIRouter(prefix="/api/v1/patients", tags=["patients"])
 # PATCH /{patient_id} : 환자 정보 수정 (StaffUser)
 
 # 환자 정보 상세 조회
-@router.get("/{patient_id}", response_model=PatientResponse)
+@router.get(
+    "/{patient_id}",
+    response_model=PatientDetailResponse,
+    summary="환자 정보 상세 조회 API",
+)
 async def get_patient_detail(
     patient_id: int,
     db: DBSession,
@@ -36,7 +40,11 @@ async def get_patient_detail(
 
 
 # 환자 정보 수정
-@router.patch("/{patient_id}", response_model=PatientResponse)
+@router.patch(
+    "/{patient_id}",
+    response_model=PatientDetailResponse,
+    summary="환자 정보 수정 API",
+)
 async def update_patient(
     patient_id: int,
     data: PatientUpdateRequest,
@@ -57,14 +65,6 @@ async def update_patient(
     # 빈 {} 요청이면 수정하지 않고 기존 정보 반환
     if not update_data:
         return patient
-
-    # null은 DB에 저장할 수 없으므로 검증 오류 반환
-    for field, value in update_data.items():
-        if value is None:
-            raise HTTPException(
-                status_code=422,
-                detail=f"{field}에는 null을 입력할 수 없습니다."
-            )
 
     # 이름 또는 연락처 수정
     for field, value in update_data.items():
