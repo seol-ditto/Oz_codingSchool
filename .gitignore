@@ -34,4 +34,4 @@ worker/models/*
 !worker/models/.gitkeep
 
 # 모델 확인 스크립트 결과(히트맵)
- worker/check_outputs/
+worker/check_outputs/
