@@ -1,4 +1,5 @@
 
+from datetime import datetime
 from io import BytesIO
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -31,6 +32,7 @@ def test_setup():
     fake_db.flush = AsyncMock()
     fake_db.commit = AsyncMock()
     fake_db.rollback = AsyncMock()
+    fake_db.refresh = AsyncMock()
 
     # 가짜 로그인 사용자
     fake_user = MagicMock()
@@ -49,6 +51,7 @@ def test_setup():
 # 1. 존재하지 않는 환자 → 404
 def test_create_medical_record_patient_not_found(test_setup):
     fake_db = test_setup
+    fake_db.get.return_value = MagicMock()
     fake_db.get.return_value = None
 
     with TestClient(app) as client:
@@ -89,7 +92,9 @@ def test_create_medical_record_duplicate_chart(test_setup):
         )
 
     assert response.status_code == 409
-    assert response.json()["detail"] == "이미 등록된 차트 번호입니다."
+    assert response.json()["detail"] == (
+        "이미 존재하는 진료 차트 번호입니다."
+    )
 
 
 # 3. 정상 등록 → 201
@@ -101,9 +106,13 @@ def test_create_medical_record_success(test_setup, tmp_path):
     fake_result.scalar_one_or_none.return_value = None
     fake_db.execute.return_value = fake_result
 
+    created_at = datetime(2026, 10, 29, 10, 0, 0)
+
     def fake_add(obj):
         if hasattr(obj, "chart_number"):
             obj.id = 100
+            obj.created_at = created_at
+            obj.updated_at = None
 
     fake_db.add.side_effect = fake_add
 
@@ -119,13 +128,42 @@ def test_create_medical_record_success(test_setup, tmp_path):
                     "shooting_datetime": "2026-10-29T10:00:00",
                 },
                 files={
-                    "image": ("test.png", make_test_png(), "image/png"),
+                    "image": (
+                        "test.png",
+                        make_test_png(),
+                        "image/png",
+                    ),
                 },
             )
 
     assert response.status_code == 201
-    assert response.json()["record_id"] == 100
+
+    data = response.json()
+
+    # 명세서에 정의된 응답 필드 8개 확인
+    assert set(data.keys()) == {
+        "id",
+        "patient_id",
+        "chart_number",
+        "symptoms",
+        "image_url",
+        "shooting_datetime",
+        "created_at",
+        "updated_at",
+    }
+
+    assert data["id"] == 100
+    assert data["patient_id"] == 1
+    assert data["chart_number"] == "CHART002"
+    assert data["symptoms"] == "기침"
+    assert data["image_url"].endswith(".png")
+    assert data["shooting_datetime"] == "2026-10-29T10:00:00"
+    assert data["created_at"] == "2026-10-29T10:00:00"
+    assert data["updated_at"] is None
+
     fake_db.commit.assert_awaited_once()
+    fake_db.refresh.assert_awaited_once()
+
     assert len(list(tmp_path.glob("*.png"))) == 1
 
 
@@ -151,7 +189,11 @@ def test_create_medical_record_image_too_large(test_setup, tmp_path):
                     "symptoms": "기침",
                 },
                 files={
-                    "image": ("large.png", large_image, "image/png"),
+                    "image": (
+                        "large.png",
+                        large_image,
+                        "image/png",
+                    ),
                 },
             )
 
@@ -183,7 +225,11 @@ def test_create_medical_record_invalid_image(test_setup, tmp_path):
                     "symptoms": "기침",
                 },
                 files={
-                    "image": ("invalid.png", invalid_image, "image/png"),
+                    "image": (
+                        "invalid.png",
+                        invalid_image,
+                        "image/png",
+                    ),
                 },
             )
 
@@ -208,7 +254,6 @@ def test_create_medical_record_db_failure(test_setup, tmp_path):
 
     fake_db.add.side_effect = fake_add
 
-    # DB에 저장하려고 하면 오류 발생
     fake_db.commit.side_effect = IntegrityError(
         "INSERT INTO medical_records",
         {},
@@ -226,7 +271,11 @@ def test_create_medical_record_db_failure(test_setup, tmp_path):
                     "symptoms": "기침",
                 },
                 files={
-                    "image": ("test.png", make_test_png(), "image/png"),
+                    "image": (
+                        "test.png",
+                        make_test_png(),
+                        "image/png",
+                    ),
                 },
             )
 
@@ -234,5 +283,5 @@ def test_create_medical_record_db_failure(test_setup, tmp_path):
     fake_db.commit.assert_awaited_once()
     fake_db.rollback.assert_awaited_once()
 
-    # DB 저장 실패 시 이미지가 남아 있으면 안 됨
+    # DB 저장 실패 시 이미지 파일이 남아 있으면 안 됨
     assert list(tmp_path.iterdir()) == []

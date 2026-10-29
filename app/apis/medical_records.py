@@ -1,3 +1,4 @@
+
 from pathlib import Path
 from datetime import datetime
 from typing import Annotated
@@ -11,13 +12,21 @@ from app.apis.dependencies import DBSession, MedicalStaffUser
 from app.models.patients import Patient
 from app.models.medical_records import MedicalRecord
 from app.models.xray_images import XrayImage
+from app.schemas.medical_records import MedicalRecordResponse
+
 
 router = APIRouter(prefix="/api/v1", tags=["medical-records"])
 
 
 # ===== [지수] 진료기록 등록 =====
-# POST /patients/{patient_id}/medical-records : 진료기록 등록 (MedicalStaffUser, multipart/form-data)
-@router.post("/patients/{patient_id}/medical-records", status_code=201)
+# POST /patients/{patient_id}/medical-records : 진료기록 등록
+
+
+@router.post(
+    "/patients/{patient_id}/medical-records",
+    status_code=201,
+    response_model=MedicalRecordResponse,
+)
 async def create_medical_record(
     patient_id: int,
     db: DBSession,
@@ -27,18 +36,16 @@ async def create_medical_record(
     image: Annotated[UploadFile, File()],
     shooting_datetime: Annotated[datetime | None, Form()] = None,
 ):
-    # 1. 환자가 존재하는지 확인
+    # 1. 환자 존재 여부 확인
     patient = await db.get(Patient, patient_id)
 
-    # 2. 환자가 없으면 404 오류 반환
     if patient is None:
         raise HTTPException(
             status_code=404,
             detail="존재하지 않는 환자입니다.",
         )
 
-   
-    # 3. 차트 번호 중복 확인
+    # 2. 차트 번호 중복 확인
     result = await db.execute(
         select(MedicalRecord).where(
             MedicalRecord.chart_number == chart_number
@@ -47,13 +54,13 @@ async def create_medical_record(
 
     existing_record = result.scalar_one_or_none()
 
-    # 4. 이미 등록된 차트 번호라면 409 오류 반환
     if existing_record is not None:
         raise HTTPException(
             status_code=409,
-            detail="이미 등록된 차트 번호입니다.",
+            detail="이미 존재하는 진료 차트 번호입니다.",
         )
-    # 5. 업로드한 이미지 형식 확인
+
+    # 3. 이미지 형식 확인
     allowed_types = {
         "image/png": ".png",
         "image/jpeg": ".jpg",
@@ -68,12 +75,12 @@ async def create_medical_record(
     extension = allowed_types[image.content_type]
     file_name = f"{uuid4().hex}{extension}"
 
-    # 6. 비공개 이미지 저장 경로 준비
+    # 4. 비공개 이미지 저장 경로
     upload_dir = Path("private_uploads/xrays")
     file_path = upload_dir / file_name
 
     try:
-        # 7. 새로운 진료기록 생성
+        # 5. 진료기록 생성
         new_record = MedicalRecord(
             patient_id=patient_id,
             chart_number=chart_number,
@@ -83,13 +90,10 @@ async def create_medical_record(
         db.add(new_record)
         await db.flush()
 
-        # 8. 이미지 파일 저장
+        # 6. 이미지 검증 및 저장
         upload_dir.mkdir(parents=True, exist_ok=True)
 
-        # 이미지 최대 용량: 10MB
         max_file_size = 10 * 1024 * 1024
-
-        # 최대 용량보다 1바이트 더 읽어서 초과 여부 확인
         image_data = await image.read(max_file_size + 1)
 
         if len(image_data) > max_file_size:
@@ -97,7 +101,7 @@ async def create_medical_record(
                 status_code=413,
                 detail="이미지 파일은 10MB를 초과할 수 없습니다.",
             )
-        # 이미지 파일의 실제 시작 부분 확인
+
         is_png = image_data.startswith(b"\x89PNG\r\n\x1a\n")
         is_jpeg = image_data.startswith(b"\xff\xd8\xff")
 
@@ -106,7 +110,7 @@ async def create_medical_record(
                 status_code=422,
                 detail="올바른 PNG 또는 JPEG 이미지가 아닙니다.",
             )
-        # 업로드된 파일 형식과 실제 파일 시작 부분 비교
+
         if (
             (image.content_type == "image/png" and not is_png)
             or (image.content_type == "image/jpeg" and not is_jpeg)
@@ -115,21 +119,38 @@ async def create_medical_record(
                 status_code=422,
                 detail="파일 형식과 실제 이미지 내용이 일치하지 않습니다.",
             )
+
         with open(file_path, "xb") as file:
             file.write(image_data)
 
-        # 9. X-ray 이미지 정보 생성
+        # 7. X-ray 이미지 정보 생성
+        actual_shooting_datetime = shooting_datetime or datetime.now()
+
         new_xray = XrayImage(
             record_id=new_record.id,
             uploader_id=user.id,
             image_url=str(file_path),
-            shooting_datetime=shooting_datetime or datetime.now(),
+            shooting_datetime=actual_shooting_datetime,
         )
 
         db.add(new_xray)
 
-        # 10. 데이터베이스 저장 확정
+        # 8. DB 저장
         await db.commit()
+
+        # 9. DB에서 생성된 날짜 등 다시 조회
+        await db.refresh(new_record)
+
+        return MedicalRecordResponse(
+            id=new_record.id,
+            patient_id=new_record.patient_id,
+            chart_number=new_record.chart_number,
+            symptoms=new_record.symptoms,
+            image_url=new_xray.image_url,
+            shooting_datetime=new_xray.shooting_datetime,
+            created_at=new_record.created_at,
+            updated_at=new_record.updated_at,
+        )
 
     except IntegrityError:
         await db.rollback()
@@ -137,7 +158,7 @@ async def create_medical_record(
 
         raise HTTPException(
             status_code=409,
-            detail="이미 등록된 차트 번호이거나 데이터가 충돌했습니다.",
+            detail="이미 존재하는 진료 차트 번호입니다.",
         )
 
     except Exception:
@@ -145,11 +166,6 @@ async def create_medical_record(
         file_path.unlink(missing_ok=True)
         raise
 
-    # 11. 등록 결과 반환
-    return {
-        "message": "진료기록이 등록되었습니다.",
-        "record_id": new_record.id,
-    }
 
 # ===== [설아] 진료기록 목록 조회 / 진료기록 상세 조회 =====
 # GET /patients/{patient_id}/medical-records : 진료기록 목록 조회 (StaffUser)
