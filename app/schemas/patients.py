@@ -22,7 +22,7 @@ class PatientResponse(BaseModel):
     id: int
     name: str
     age: int
-    gender: Gender
+    gender: Gender | None
     phone: str
     created_at: datetime
     updated_at: datetime | None
