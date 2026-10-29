@@ -1,22 +1,19 @@
-<<<<<<< HEAD
-=======
-
->>>>>>> origin/feat/patient-api-impl-jisoo
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import select
 
 from app.apis.dependencies import DBSession, MedicalStaffUser, StaffUser
-from app.models.medical_records import MedicalRecord
-from app.models.xray_images import XrayImage
-<<<<<<< HEAD
-from app.schemas.patients import PatientDetailResponse, PatientUpdateRequest
-=======
-from app.schemas.patients import PatientDetailResponse, PatientUpdateRequest,PatientCreateRequest, PatientResponse
 from app.models.enums import Gender
-from app.models.patients import Patient   # ★ 모델 파일 경로, 클래스 이름 확인
->>>>>>> origin/feat/patient-api-impl-jisoo
+from app.models.medical_records import MedicalRecord
+from app.models.patients import Patient
+from app.models.xray_images import XrayImage
+from app.schemas.patients import (
+    PatientCreateRequest,
+    PatientDetailResponse,
+    PatientResponse,
+    PatientUpdateRequest,
+)
 
 router = APIRouter(prefix="/api/v1/patients", tags=["patients"])
 

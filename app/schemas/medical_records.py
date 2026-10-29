@@ -1,7 +1,4 @@
-<<<<<<< HEAD
-=======
 
->>>>>>> origin/feat/patient-api-impl-jisoo
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, field_validator
@@ -54,8 +51,4 @@ class RecordDetailResponse(BaseModel):
     chart_number: str
     symptoms: str
     image_url: str
-<<<<<<< HEAD
     created_at: datetime
-=======
-    created_at: datetime
->>>>>>> origin/feat/patient-api-impl-jisoo

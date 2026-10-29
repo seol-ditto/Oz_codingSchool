@@ -1,4 +1,3 @@
-
 from pathlib import Path
 from datetime import datetime
 from typing import Annotated
@@ -8,11 +7,15 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
-from app.apis.dependencies import DBSession, MedicalStaffUser
+from app.apis.dependencies import DBSession, MedicalStaffUser, StaffUser
 from app.models.patients import Patient
 from app.models.medical_records import MedicalRecord
 from app.models.xray_images import XrayImage
-from app.schemas.medical_records import MedicalRecordResponse
+from app.schemas.medical_records import (
+    MedicalRecordResponse,
+    RecordListItemResponse,
+    RecordDetailResponse,
+)
 
 
 router = APIRouter(prefix="/api/v1", tags=["medical-records"])
@@ -168,13 +171,7 @@ async def create_medical_record(
     )
 
 # ===== [설아] 진료기록 목록 조회 / 진료기록 상세 조회 =====
-from sqlalchemy import select
 
-from app.schemas.medical_records import RecordListItemResponse, RecordDetailResponse
-from app.apis.dependencies import StaffUser, DBSession
-from app.models.medical_records import MedicalRecord
-from app.models.xray_images import XrayImage
-from app.models.patients import Patient
 
 # ----- 진료기록 목록 조회 -----
 # GET /patients/{patient_id}/medical-records : 진료기록 목록 조회 (StaffUser)
