@@ -1,8 +1,17 @@
+from decimal import Decimal
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
+from fastapi.concurrency import run_in_threadpool
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from worker.model import MODEL_NAME
+from app.apis.dependencies import DBSession, StaffUser
+from app.models.ai_analysis_results import AIAnalysisResult
+from app.models.medical_records import MedicalRecord
+from app.models.xray_images import XrayImage
+from worker.model import MODEL_NAME, predict
  
 router = APIRouter(prefix="/api/v1", tags=["predictions"])
  
@@ -37,6 +46,80 @@ def get_heatmap_path(record_id: int) -> Path:
 # POST /medical-records/{record_id}/predictions : AI 폐렴 예측 (StaffUser)
 #   진료기록 없음 404 → 같은 모델 결과 있으면 200 → 없으면 predict() 후 저장 201
  
+ # 같은 진료기록, 같은 모델로 저장된 예측 결과 찾기
+async def find_saved_result(db: AsyncSession, record_id: int) -> AIAnalysisResult | None:
+    result = await db.execute(
+        select(AIAnalysisResult).where(
+            AIAnalysisResult.record_id == record_id,
+            AIAnalysisResult.ai_model == MODEL_NAME,
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+# 예측 결과를 응답 모양으로 바꾸기 (지수님 스키마가 머지되면 response_model로 대체)
+def to_prediction_dict(saved: AIAnalysisResult) -> dict:
+    return {
+        "is_pneumonia": saved.is_pneumonia,
+        "confidence": saved.confidence,
+        "heatmap_url": saved.heatmap_url,
+    }
+
+
+# AI 폐렴 예측 -> POST /api/v1/medical-records/{record_id}/predictions
+@router.post("/medical-records/{record_id}/predictions", status_code=201)
+async def create_prediction(
+    record_id: int,
+    response: Response,
+    db: DBSession,
+    user: StaffUser,   # 변수를 안 써도 권한 확인(pending 차단)을 위해 필요
+):
+    # 1. 진료기록 확인
+    record = await db.get(MedicalRecord, record_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="존재하지 않는 진료기록입니다.")
+
+    # 2. 이미 같은 모델로 예측한 결과가 있으면 AI를 다시 돌리지 않고 그대로 응답 (200)
+    saved = await find_saved_result(db, record_id)
+    if saved is not None:
+        response.status_code = 200
+        return to_prediction_dict(saved)
+
+    # 3. 진료기록에 등록된 X-Ray 이미지 경로 찾기
+    result = await db.execute(select(XrayImage).where(XrayImage.record_id == record_id))
+    xray = result.scalars().first()
+    if xray is None:
+        raise HTTPException(status_code=404, detail="X-Ray 이미지 파일을 찾을 수 없습니다.")
+
+    image_path = get_image_path(xray.image_url)    # 파일이 없으면 404
+    heatmap_path = get_heatmap_path(record_id)
+
+    # 4. AI 예측 (오래 걸리는 계산이라 서버가 멈추지 않게 별도 스레드에서 실행)
+    prediction = await run_in_threadpool(predict, image_path, heatmap_path)
+
+    # 5. 결과 저장 (히트맵을 못 만들었으면 heatmap_path가 None이라 null로 저장됨)
+    new_result = AIAnalysisResult(
+        record_id=record_id,
+        is_pneumonia=prediction["is_pneumonia"],
+        confidence=Decimal(str(round(prediction["confidence"], 2))),
+        heatmap_url=prediction["heatmap_path"],
+        ai_model=MODEL_NAME,
+    )
+    db.add(new_result)
+
+    try:
+        await db.commit()
+    except IntegrityError:
+        # 거의 동시에 같은 요청이 들어와 이미 저장된 경우 -> 저장된 결과를 그대로 응답 (200)
+        await db.rollback()
+        saved = await find_saved_result(db, record_id)
+        if saved is None:
+            raise
+        response.status_code = 200
+        return to_prediction_dict(saved)
+
+    await db.refresh(new_result)
+    return to_prediction_dict(new_result)
  
  
 # ===== [지수] 예측 결과 목록 조회 =====
