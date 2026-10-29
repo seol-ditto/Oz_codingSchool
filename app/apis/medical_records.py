@@ -1,7 +1,4 @@
-<<<<<<< HEAD
-=======
 
->>>>>>> origin/feat/patient-api-impl-jisoo
 from pathlib import Path
 from datetime import datetime
 from typing import Annotated
@@ -17,10 +14,7 @@ from app.models.medical_records import MedicalRecord
 from app.models.xray_images import XrayImage
 from app.schemas.medical_records import MedicalRecordResponse
 
-<<<<<<< HEAD
-=======
 
->>>>>>> origin/feat/patient-api-impl-jisoo
 router = APIRouter(prefix="/api/v1", tags=["medical-records"])
 
 
@@ -141,22 +135,8 @@ async def create_medical_record(
 
         db.add(new_xray)
 
-        # 8. DB 저장
+    # 8. DB 저장
         await db.commit()
-
-        # 9. DB에서 생성된 날짜 등 다시 조회
-        await db.refresh(new_record)
-
-        return MedicalRecordResponse(
-            id=new_record.id,
-            patient_id=new_record.patient_id,
-            chart_number=new_record.chart_number,
-            symptoms=new_record.symptoms,
-            image_url=new_xray.image_url,
-            shooting_datetime=new_xray.shooting_datetime,
-            created_at=new_record.created_at,
-            updated_at=new_record.updated_at,
-        )
 
     except IntegrityError:
         await db.rollback()
@@ -172,6 +152,20 @@ async def create_medical_record(
         file_path.unlink(missing_ok=True)
         raise
 
+    # 9. DB 저장 후 다시 조회
+    await db.refresh(new_record)
+
+    # 10. 응답 반환
+    return MedicalRecordResponse(
+        id=new_record.id,
+        patient_id=new_record.patient_id,
+        chart_number=new_record.chart_number,
+        symptoms=new_record.symptoms,
+        image_url=str(file_path),
+        shooting_datetime=actual_shooting_datetime,
+        created_at=new_record.created_at,
+        updated_at=new_record.updated_at,
+    )
 
 # ===== [설아] 진료기록 목록 조회 / 진료기록 상세 조회 =====
 from sqlalchemy import select
@@ -184,10 +178,7 @@ from app.models.patients import Patient
 
 # ----- 진료기록 목록 조회 -----
 # GET /patients/{patient_id}/medical-records : 진료기록 목록 조회 (StaffUser)
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/feat/patient-api-impl-jisoo
 @router.get(
     "/patients/{patient_id}/medical-records",
     summary="진료기록 목록 조회 API",
