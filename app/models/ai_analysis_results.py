@@ -8,6 +8,7 @@ from sqlalchemy import (
     ForeignKey,
     Numeric,
     String,
+    UniqueConstraint,
     func,
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -18,6 +19,13 @@ from app.core.db.databases import Base
 class AIAnalysisResult(Base):
     __tablename__ = "ai_analysis_results"
 
+    __table_args__ = (
+        UniqueConstraint(
+            "record_id",
+            "ai_model",
+            name="uq_ai_analysis_results_record_id_ai_model",
+        ),
+    )
     id: Mapped[int] = mapped_column(
         BigInteger,
         primary_key=True,
@@ -44,9 +52,9 @@ class AIAnalysisResult(Base):
     )
     # AI 예측 신뢰도를 0~100 사이 퍼센트로 저장(예: 0.9753 -> 97.53)
 
-    heatmap_url: Mapped[str] = mapped_column(
+    heatmap_url: Mapped[str | None] = mapped_column(
         String(255),
-        nullable=False,
+        nullable=True,
         comment="AI가 판별한 병변 표시 이미지 url",
     )
 
