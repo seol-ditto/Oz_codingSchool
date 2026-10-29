@@ -119,60 +119,139 @@
 ### 1) API 개요
 | 항목 | 내용 |
 | --- | --- |
-| API 이름 |  |
-| 설명 |  |
-| 엔드포인트(Endpoint) |  |
-| 메서드(Method) |  |
-| 인증 필요 여부 |  |
+| API 이름 | AI 폐렴 예측 |
+| 설명 | 진료기록에 등록된 X-Ray 이미지를 AI 모델(ResNet18, E8_lung_crop)로 분석하여 폐렴 여부, 신뢰도, 히트맵 이미지 경로를 응답한다. 같은 진료기록에 같은 모델로 예측한 결과가 이미 저장되어 있으면 AI를 다시 실행하지 않고 저장된 결과를 응답한다. |
+| 엔드포인트(Endpoint) | `/api/v1/medical-records/{record_id}/predictions` |
+| 메서드(Method) | POST |
+| 인증 필요 여부 | Y (staff 이상만 가능) |
 
 ### 2) 요청 (Request)
 #### Headers
 | Key | Value | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| Authorization | Bearer {access_token} | 로그인한 유저의 액세스 토큰 |
 
 #### 경로 파라미터
 | 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| record_id | integer | Y | 예측할 진료기록의 고유 ID |
 
 #### 본문 필드
 | 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| 없음 | - | - | 없음 |
 
 #### 쿼리 파라미터 (GET 요청 시)
 | 쿼리 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| 없음 | - | - | 없음 |
 
 ### 3) 응답 (Response)
 #### 성공
-- 
+- 201 Created (새로 예측하여 저장한 경우)
 ```JSON
-
+{
+  "is_pneumonia": true,
+  "confidence": 97.53,
+  "heatmap_url": "private_uploads/heatmaps/1_E8_lung_crop.png"
+}
 ```
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| is_pneumonia | boolean | 폐렴 여부. 폐렴이면 true, 정상이면 false |
+| confidence | number | AI 판정에 대한 신뢰도(0~100 퍼센트, 소수점 둘째 자리까지). 폐렴 판정이면 폐렴일 확률, 정상 판정이면 정상일 확률이라 항상 50 이상 |
+| heatmap_url | string \| null | 히트맵 이미지 경로. 히트맵 생성에 실패하면 null |
+
+- 200 OK (같은 진료기록에 같은 모델로 저장된 결과를 응답한 경우)
+```JSON
+{
+  "is_pneumonia": true,
+  "confidence": 97.53,
+  "heatmap_url": "private_uploads/heatmaps/1_E8_lung_crop.png"
+}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| is_pneumonia | boolean | 저장되어 있던 폐렴 여부 |
+| confidence | number | 저장되어 있던 신뢰도 |
+| heatmap_url | string \| null | 저장되어 있던 히트맵 이미지 경로. 없으면 null |
+
 
 #### 응답 Headers
 | Key | 예시 값 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| Content-Type | application/json | 응답 본문 형식 |
 
 #### 실패
-- 
+- 401 Unauthorized (토큰 없음 / 만료 / 위조, 없는 회원)
 ```JSON
-
+{"detail": "인증 정보가 유효하지 않습니다."}
 ```
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| detail | string | 에러 메시지 |
+
+- 403 Forbidden (비활성 회원)
+```JSON
+{"detail": "비활성화된 계정입니다."}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 에러 메시지 |
+
+- 403 Forbidden (대기자 권한: pending)
+```JSON
+{"detail": "접근 권한이 없습니다."}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 에러 메시지 |
+
+- 404 Not Found (없는 진료기록)
+```JSON
+{"detail": "존재하지 않는 진료기록입니다."}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 에러 메시지 |
+
+- 404 Not Found (진료기록의 X-Ray 이미지 파일을 찾을 수 없는 경우)
+```JSON
+{"detail": "X-Ray 이미지 파일을 찾을 수 없습니다."}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 에러 메시지 |
+
+- 422 Unprocessable Entity (record_id가 숫자가 아닌 경우)
+```JSON
+{
+  "detail": [
+    {
+      "type": "int_parsing",
+      "loc": ["path", "record_id"],
+      "msg": "Input should be a valid integer, unable to parse string as an integer",
+      "input": "abc"
+    }
+  ]
+}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | array | 검증 오류 목록 |
+| detail[].type | string | 오류 종류 |
+| detail[].loc | array | 오류가 발생한 위치 |
+| detail[].msg | string | 오류 메시지 |
+| detail[].input | any | 입력된 값 |
 
 ### 4) 비고
-- 
-
+- 권한: staff, admin 모두 부서와 상관없이 호출할 수 있으며, pending은 접근할 수 없다.
+- 요청 본문 없이 호출하며, 진료기록 등록 때 업로드한 X-Ray 이미지(진료기록 1개당 1장)를 사용한다.
+- 같은 진료기록에 같은 모델(E8_lung_crop)로 예측한 결과가 저장되어 있으면 AI를 다시 실행하지 않고 저장된 결과를 200으로 응답하며, 새로 예측하면 결과를 저장하고 201로 응답한다.
+- 같은 요청이 거의 동시에 들어와도 결과는 한 번만 저장되고, 나중에 처리된 요청은 먼저 저장된 결과를 200으로 응답한다.
+- 히트맵은 서버의 `private_uploads/heatmaps/`에 `{record_id}_E8_lung_crop.png`로 저장하며, 생성에 실패하면 `heatmap_url`은 `null`이고 나머지 결과는 정상 응답한다.
+- 사용한 모델은 ai_model로 저장되며, 이 API의 응답에는 포함하지 않는다. (목록 조회 API에서 확인 가능)
+- record_id가 숫자가 아닌 경우 422 오류를 반환한다.
 
 ## 2. 예측 결과 목록 조회 (REQ-PRED-002)
 - 담당: 김지수
