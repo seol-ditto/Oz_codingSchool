@@ -1,3 +1,7 @@
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/feat/patient-api-impl-jisoo
 from pathlib import Path
 from datetime import datetime
 from typing import Annotated
@@ -13,6 +17,10 @@ from app.models.medical_records import MedicalRecord
 from app.models.xray_images import XrayImage
 from app.schemas.medical_records import MedicalRecordResponse
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/feat/patient-api-impl-jisoo
 router = APIRouter(prefix="/api/v1", tags=["medical-records"])
 
 
@@ -176,7 +184,10 @@ from app.models.patients import Patient
 
 # ----- 진료기록 목록 조회 -----
 # GET /patients/{patient_id}/medical-records : 진료기록 목록 조회 (StaffUser)
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/feat/patient-api-impl-jisoo
 @router.get(
     "/patients/{patient_id}/medical-records",
     summary="진료기록 목록 조회 API",
