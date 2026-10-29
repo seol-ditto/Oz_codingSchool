@@ -32,3 +32,6 @@ private_uploads/
 worker/models/*
 # Git은 빈 폴더를 못 올리기 때문에 폴더가 있다는 표시로 얘는 올리도록 설정
 !worker/models/.gitkeep
+
+# 모델 확인 스크립트 결과(히트맵)
+ worker/check_outputs/
