@@ -12,6 +12,7 @@ router = APIRouter(prefix="/api/v1", tags=["predictions"])
 #   DB의 image_url을 Path로 바꾸고, 파일이 실제로 없으면 HTTPException
 # get_heatmap_path(record_id: int) -> Path
 #   private_uploads/heatmaps/{record_id}_{MODEL_NAME}.png 경로를 만들어 돌려줌 (폴더 없으면 생성)
+
 def get_image_path(image_url: str) -> Path:
     image_path = Path(image_url)
 

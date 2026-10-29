@@ -26,6 +26,7 @@ class AIAnalysisResult(Base):
             name="uq_ai_analysis_results_record_id_ai_model",
         ),
     )
+
     id: Mapped[int] = mapped_column(
         BigInteger,
         primary_key=True,
