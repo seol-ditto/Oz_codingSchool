@@ -120,3 +120,41 @@ async def create_prediction(
  
 # ===== [지수] 예측 결과 목록 조회 =====
 # GET /medical-records/{record_id}/predictions : 예측 결과 목록 조회 (StaffUser)
+
+
+from sqlalchemy import select
+
+from app.apis.dependencies import StaffUser, DBSession
+from app.models.ai_analysis_results import AIAnalysisResult
+from app.models.medical_records import MedicalRecord
+from app.schemas.predictions import PredictionListItemResponse
+
+
+@router.get(
+    "/medical-records/{record_id}/predictions",
+    summary="예측 결과 목록 조회 API",
+    response_model=list[PredictionListItemResponse],
+)
+async def get_prediction_list(
+    _: StaffUser,
+    db: DBSession,
+    record_id: int,
+):
+    record = await db.get(MedicalRecord, record_id)
+
+    if record is None:
+        raise HTTPException(
+            status_code=404,
+            detail="존재하지 않는 진료기록입니다.",
+        )
+
+    result = await db.execute(
+        select(AIAnalysisResult)
+        .where(AIAnalysisResult.record_id == record_id)
+        .order_by(
+            AIAnalysisResult.created_at.desc(),
+            AIAnalysisResult.id.desc(),
+        )
+    )
+
+    return result.scalars().all()
