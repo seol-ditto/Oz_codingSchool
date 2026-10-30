@@ -84,6 +84,7 @@ class PasswordUpdateRequest(BaseModel):
 class MyPageResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
+    id: int   # 7일차: 화면에서 본인 확인용(관리자 본인 권한 변경 잠금)으로 추가
     name: str | None
     email: str | None
     department: Department
@@ -105,6 +106,7 @@ class UserListItemResponse(BaseModel):
     department: Department
     gender: Gender
     phone_number: str | None
+    role: Role   # 7일차: 관리자 화면 권한 선택칸 표시용으로 추가
     is_active: bool
 
 
