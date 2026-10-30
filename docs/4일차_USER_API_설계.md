@@ -665,7 +665,8 @@
 - 로그인한 사용자만 마이페이지를 조회할 수 있다.
 - 로그인한 사용자 본인의 정보만 조회할 수 있다.
 - 비밀번호 등 민감한 정보는 응답에 포함하지 않는다.
-- 화면 동작을 위해 요구사항 외 필드로 추가 (7일차 회의 결정)
+- `id`는 화면 동작(회원 관리에서 본인 권한 변경 막기)을 위해 요구사항 외 필드로 추가 (7일차 회의 결정)
+
 
 ## 7. 회원 정보 수정 (REQ-USER-007)
 - 담당: 이지희
@@ -960,25 +961,25 @@
 [
   {
     "id": 1,
-    "role": "pending",
     "email": "oz@example.com",
     "name": "김오즈",
     "department": "medical",
     "gender": "F",
     "phone_number": "010-1234-5678",
+    "role": "pending",
     "is_active": true
   }
 ]
 ```
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-| role | string | pending/staff/admin |
 | id | integer | 회원 고유 ID |
 | email | string | 이메일 |
 | name | string | 이름 |
 | department | string | 부서 (research / medical / develop) |
 | gender | string | 성별 (M / F) |
 | phone_number | string | 휴대폰 번호 |
+| role | string | 권한 (pending / staff / admin) |
 | is_active | boolean | 계정 활성화 여부 |
 
 #### 응답 Headers
@@ -1038,7 +1039,8 @@
 - 쿼리 파라미터를 하나도 보내지 않으면 전체 회원을 조회한다.
 - search와 department를 함께 보내면 두 조건을 모두 만족하는 회원만 조회한다.
 - 쿼리 파라미터 예시: `/api/v1/admin/users?search=김&department=medical`
-- 화면 동작을 위해 요구사항 외 필드로 추가 (7일차 회의 결정)
+- `role`은 화면 동작(회원 관리의 권한 선택칸 표시)을 위해 요구사항 외 필드로 추가 (7일차 회의 결정)
+
 
 ## 10. 회원 권한 변경 (REQ-USER-005)
 - 담당: 김설아
