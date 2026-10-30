@@ -1,3 +1,4 @@
+from app.schemas.predictions import PredictionResponse
 from decimal import Decimal
 from pathlib import Path
 
@@ -57,17 +58,12 @@ async def find_saved_result(db: AsyncSession, record_id: int) -> AIAnalysisResul
     return result.scalar_one_or_none()
 
 
-# 예측 결과를 응답 모양으로 바꾸기 (지수님 스키마가 머지되면 response_model로 대체)
-def to_prediction_dict(saved: AIAnalysisResult) -> dict:
-    return {
-        "is_pneumonia": saved.is_pneumonia,
-        "confidence": saved.confidence,
-        "heatmap_url": saved.heatmap_url,
-    }
-
-
 # AI 폐렴 예측 -> POST /api/v1/medical-records/{record_id}/predictions
-@router.post("/medical-records/{record_id}/predictions", status_code=201)
+@router.post(
+    "/medical-records/{record_id}/predictions",
+    status_code=201,
+    response_model=PredictionResponse,
+)
 async def create_prediction(
     record_id: int,
     response: Response,
@@ -83,7 +79,7 @@ async def create_prediction(
     saved = await find_saved_result(db, record_id)
     if saved is not None:
         response.status_code = 200
-        return to_prediction_dict(saved)
+        return saved
 
     # 3. 진료기록에 등록된 X-Ray 이미지 경로 찾기
     result = await db.execute(select(XrayImage).where(XrayImage.record_id == record_id))
@@ -116,10 +112,10 @@ async def create_prediction(
         if saved is None:
             raise
         response.status_code = 200
-        return to_prediction_dict(saved)
+        return saved
 
     await db.refresh(new_result)
-    return to_prediction_dict(new_result)
+    return new_result
  
  
 # ===== [지수] 예측 결과 목록 조회 =====
