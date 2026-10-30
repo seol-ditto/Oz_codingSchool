@@ -62,8 +62,8 @@ const pages = {
                 <td>${p.id}</td>
                 <td>${p.name}</td>
                 <td>${p.age}</td>
-                <td>${p.gender === 'male' ? '남성' : '여성'}</td>
-                <td>${utils.formatPhoneNumber(p.phone_number)}</td>
+                <td>${utils.genderLabel(p.gender)}</td>
+                <td>${utils.formatPhoneNumber(p.phone)}</td>
                 <td><button onclick="navigate('/patients/${p.id}')">상세보기</button></td>
             </tr>
         `).join('');
@@ -73,7 +73,7 @@ const pages = {
         const html = await utils.loadTemplate('patient-create');
         document.getElementById('app').innerHTML = html;
         
-        const phoneInput = document.getElementById('phone_number');
+        const phoneInput = document.getElementById('phone');
         if (phoneInput) {
             phoneInput.addEventListener('input', (e) => utils.handlePhoneInput(e));
         }
@@ -88,12 +88,12 @@ const pages = {
         app.innerHTML = html;
         
         // 환자 정보 표시
-        document.getElementById('patient-name').innerText = `${patient.name} (${patient.gender === 'male' ? '남성' : '여성'})`;
-        document.getElementById('patient-info').innerText = `나이: ${patient.age}세 | 연락처: ${utils.formatPhoneNumber(patient.phone_number)}`;
+        document.getElementById('patient-name').innerText = `${patient.name} (${utils.genderLabel(patient.gender)})`;
+        document.getElementById('patient-info').innerText = `나이: ${patient.age}세 | 연락처: ${utils.formatPhoneNumber(patient.phone)}`;
         
         // 수정 폼 초기값 설정
         document.getElementById('update-name').value = patient.name;
-        document.getElementById('update-phone').value = utils.formatPhoneNumber(patient.phone_number);
+        document.getElementById('update-phone').value = utils.formatPhoneNumber(patient.phone);
         
         const updatePhoneInput = document.getElementById('update-phone');
         if (updatePhoneInput) {
@@ -107,6 +107,10 @@ const pages = {
         state.currentPatientId = patientId;
 
         const listBody = document.getElementById('records-list');
+        if (records.length === 0) {
+            listBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem;">등록된 진료 기록이 없습니다.</td></tr>';
+            return;
+        }
         listBody.innerHTML = records.map(r => `
             <tr>
                 <td>${r.id}</td>
@@ -154,7 +158,14 @@ const pages = {
         document.getElementById('chart-number').innerText = record.chart_number;
         document.getElementById('symptoms-text').innerText = record.symptoms;
         document.getElementById('created-at').innerText = new Date(record.created_at).toLocaleString();
-        document.getElementById('xray-img').src = record.xray_image_url;
+        // X-Ray는 비공개 폴더라 로그인 확인 API로 받아와서 표시 (GET /medical-records/{id}/xray-image)
+        const xrayUrl = await apis.getImageObjectUrl(`/medical-records/${recordId}/xray-image`);
+        const xrayImg = document.getElementById('xray-img');
+        if (xrayUrl) {
+            xrayImg.src = xrayUrl;
+        } else {
+            xrayImg.replaceWith(Object.assign(document.createElement('p'), { innerText: 'X-Ray 이미지를 불러올 수 없습니다.' }));
+        }
         
         document.getElementById('predict-btn').onclick = () => this.handlePredict(recordId);
         document.getElementById('back-to-patient-btn').onclick = () => navigate(`/patients/${record.patient_id}`);
@@ -167,24 +178,38 @@ const pages = {
                 <table>
                     <thead>
                         <tr>
+                            <th>ID</th>
                             <th>수행 일시</th>
                             <th>폐렴 여부</th>
                             <th>Confidence</th>
                             <th>사용 모델</th>
+                            <th>히트맵</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${analyses.map(a => `
                             <tr class="${a.is_pneumonia ? 'result-positive' : 'result-negative'}">
+                                <td>${a.id}</td>
                                 <td>${new Date(a.created_at).toLocaleString()}</td>
-                                <td><strong>${a.is_pneumonia ? 'Positive' : 'Negative'}</strong></td>
+                                <td><strong>${a.is_pneumonia ? '폐렴' : '정상'}</strong></td>
                                 <td>${a.confidence}%</td>
                                 <td>${a.ai_model}</td>
+                                <td>${a.heatmap_url ? '<img class="xray-thumb heatmap-thumb" alt="히트맵">' : '없음'}</td>
                             </tr>
                         `).join('')}
                     </tbody>
                 </table>
             `;
+
+            // 히트맵도 비공개 폴더라 로그인 확인 API로 받아와서 표시 (GET /medical-records/{id}/heatmap)
+            const heatmapImgs = analysisList.querySelectorAll('.heatmap-thumb');
+            if (heatmapImgs.length > 0) {
+                const heatmapUrl = await apis.getImageObjectUrl(`/medical-records/${recordId}/heatmap`);
+                heatmapImgs.forEach(img => {
+                    if (heatmapUrl) img.src = heatmapUrl;
+                    else img.replaceWith('불러오기 실패');
+                });
+            }
         }
     },
 
@@ -196,10 +221,10 @@ const pages = {
         // 현재 사용자 정보 표시
         document.getElementById('me-email').innerText = state.user.email;
         document.getElementById('me-name-display').innerText = state.user.name;
-        document.getElementById('me-department-display').innerText = state.user.department;
-        document.getElementById('me-gender-display').innerText = state.user.gender === 'male' ? '남성' : '여성';
+        document.getElementById('me-department-display').innerText = utils.departmentLabel(state.user.department);
+        document.getElementById('me-gender-display').innerText = utils.genderLabel(state.user.gender);
         document.getElementById('me-phone-display').innerText = utils.formatPhoneNumber(state.user.phone_number);
-        document.getElementById('me-role-display').innerText = state.user.role;
+        document.getElementById('me-role-display').innerText = utils.roleLabel(state.user.role);
 
         // 수정 폼 초기값 설정
         document.getElementById('update-me-department').value = state.user.department;
@@ -226,7 +251,7 @@ const pages = {
         // 필드 값 복원
         const queryInput = document.getElementById('admin-search-query');
         const deptSelect = document.getElementById('admin-filter-dept');
-        if (queryInput && params.query) queryInput.value = params.query;
+        if (queryInput && params.search) queryInput.value = params.search;
         if (deptSelect && params.department) deptSelect.value = params.department;
 
         const listBody = document.getElementById('admin-users-list');
@@ -239,7 +264,7 @@ const pages = {
                 <td>${u.id}</td>
                 <td>${u.name}</td>
                 <td>${u.email}</td>
-                <td>${u.department}</td>
+                <td>${utils.departmentLabel(u.department)}</td>
                 <td>${utils.formatPhoneNumber(u.phone_number)}</td>
                 <td>
                     <select onchange="pages.handleRoleUpdate(${u.id}, this.value)" ${u.id === state.user.id ? 'disabled' : ''}>
@@ -260,7 +285,7 @@ const pages = {
         const department = document.getElementById('admin-filter-dept').value;
         
         const params = new URLSearchParams();
-        if (query) params.set('query', query);
+        if (query) params.set('search', query);
         if (department) params.set('department', department);
         
         const queryString = params.toString();
@@ -274,7 +299,7 @@ const pages = {
 
     async handleRoleUpdate(userId, newRole) {
         try {
-            await apis.adminUpdateUserRole({ user_id: userId, new_role: newRole });
+            await apis.adminUpdateUserRole(userId, newRole);
             utils.showAlert('권한이 변경되었습니다.', 'success');
             this.handleAdminSearch();
         } catch (err) {
@@ -314,9 +339,7 @@ const pages = {
             e.target.reset();
         } catch (err) {
             let msg = err.message;
-            if (err.status === 400) {
-                msg = '비밀번호는 "대소문자, 특수문자, 숫자를 각 1개씩 포함한 8자리 이상이어야 합니다."';
-            } else if (err.status === 500) {
+            if (err.status === 500) {
                 msg = '잠시 후 다시시도해주세요.';
             }
             utils.showAlert(msg, 'error', '비밀번호 변경 실패');
@@ -329,7 +352,7 @@ const pages = {
         try {
             await apis.deleteMe();
             utils.showAlert('탈퇴 처리가 완료되었습니다.', 'success');
-            logout(); // (app.js)
+            clearSession(); // (app.js) 탈퇴한 계정은 로그아웃 API를 부를 수 없어서 브라우저 상태만 정리
         } catch (err) {
             utils.showAlert(`탈퇴 처리 실패: ${err.message}`, 'error');
         }
@@ -373,7 +396,7 @@ const pages = {
             name: document.getElementById('name').value,
             age: parseInt(document.getElementById('age').value),
             gender: document.getElementById('gender').value,
-            phone_number: document.getElementById('phone_number').value.replace(/[^\d]/g, '')
+            phone: document.getElementById('phone').value.replace(/[^\d]/g, '')
         };
         
         try {
@@ -408,14 +431,14 @@ const pages = {
 
     async handleRecordCreate(e, patientId) {
         e.preventDefault();
+        // 환자 ID는 주소에 넣고(POST /patients/{id}/medical-records), 파일 필드 이름은 image
         const formData = new FormData();
-        formData.append('patient_id', patientId);
         formData.append('chart_number', document.getElementById('chart_number').value);
         formData.append('symptoms', document.getElementById('symptoms').value);
-        formData.append('xray_image', document.getElementById('xray_image').files[0]);
+        formData.append('image', document.getElementById('xray_image').files[0]);
 
         try {
-            await apis.createMedicalRecord(formData);
+            await apis.createMedicalRecord(patientId, formData);
             utils.showAlert('진료 기록이 등록되었습니다.', 'success');
             navigate(`/patients/${patientId}`);
         } catch (err) {
@@ -436,7 +459,7 @@ const pages = {
         const patientId = state.currentPatientId;
         const updateData = {
             name: document.getElementById('update-name').value,
-            phone_number: document.getElementById('update-phone').value.replace(/[^\d]/g, '')
+            phone: document.getElementById('update-phone').value.replace(/[^\d]/g, '')
         };
 
         try {

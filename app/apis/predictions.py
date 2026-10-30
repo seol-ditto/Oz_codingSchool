@@ -3,6 +3,7 @@ from decimal import Decimal
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Response
+from fastapi.responses import FileResponse
 from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -120,3 +121,72 @@ async def create_prediction(
  
 # ===== [지수] 예측 결과 목록 조회 =====
 # GET /medical-records/{record_id}/predictions : 예측 결과 목록 조회 (StaffUser)
+
+
+from sqlalchemy import select
+
+from app.apis.dependencies import StaffUser, DBSession
+from app.models.ai_analysis_results import AIAnalysisResult
+from app.models.medical_records import MedicalRecord
+from app.schemas.predictions import PredictionListItemResponse
+
+
+@router.get(
+    "/medical-records/{record_id}/predictions",
+    summary="예측 결과 목록 조회 API",
+    response_model=list[PredictionListItemResponse],
+)
+async def get_prediction_list(
+    _: StaffUser,
+    db: DBSession,
+    record_id: int,
+):
+    record = await db.get(MedicalRecord, record_id)
+
+    if record is None:
+        raise HTTPException(
+            status_code=404,
+            detail="존재하지 않는 진료기록입니다.",
+        )
+
+    result = await db.execute(
+        select(AIAnalysisResult)
+        .where(AIAnalysisResult.record_id == record_id)
+        .order_by(
+            AIAnalysisResult.created_at.desc(),
+            AIAnalysisResult.id.desc(),
+        )
+    )
+
+    return result.scalars().all()
+
+
+# ===== [설아] 히트맵 이미지 파일 (7일차 화면 연결용) =====
+# GET /medical-records/{record_id}/heatmap : 현재 모델(MODEL_NAME) 예측 결과의 히트맵 파일 응답 (StaffUser)
+# X-Ray와 같은 이유로, 로그인한 직원인지 확인한 뒤에만 파일을 보내준다.
+@router.get(
+    "/medical-records/{record_id}/heatmap",
+    summary="히트맵 이미지 파일 조회 API",
+    response_class=FileResponse,
+)
+async def get_heatmap_image(
+    _: StaffUser,
+    db: DBSession,
+    record_id: int,
+):
+    record = await db.get(MedicalRecord, record_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="존재하지 않는 진료기록입니다.")
+
+    saved = await find_saved_result(db, record_id)
+    heatmap_dir = Path("private_uploads/heatmaps").resolve()
+    heatmap_path = Path(saved.heatmap_url).resolve() if saved and saved.heatmap_url else None
+    if (
+        heatmap_path is None
+        or not heatmap_path.is_relative_to(heatmap_dir)
+        or not heatmap_path.is_file()
+    ):
+        raise HTTPException(status_code=404, detail="히트맵 이미지를 찾을 수 없습니다.")
+
+    return FileResponse(heatmap_path)
+
