@@ -2,8 +2,6 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from pydantic import BaseModel, ConfigDict, Field
-
 from app.models.enums import Gender
 
 # ===== [시윤] 환자 정보 등록 / 환자 목록 조회 =====
@@ -28,7 +26,7 @@ class PatientResponse(BaseModel):
     phone: str
     created_at: datetime
     updated_at: datetime | None
-    
+
 
 
 # ===== [지희] 환자 정보 상세 조회 / 환자 정보 수정 =====
