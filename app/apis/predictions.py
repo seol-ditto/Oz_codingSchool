@@ -1,4 +1,3 @@
-from app.schemas.predictions import PredictionResponse
 from decimal import Decimal
 from pathlib import Path
 
@@ -13,11 +12,12 @@ from app.apis.dependencies import DBSession, StaffUser
 from app.models.ai_analysis_results import AIAnalysisResult
 from app.models.medical_records import MedicalRecord
 from app.models.xray_images import XrayImage
+from app.schemas.predictions import PredictionListItemResponse, PredictionResponse
 from worker.model import MODEL_NAME, predict
- 
+
 router = APIRouter(prefix="/api/v1", tags=["predictions"])
- 
- 
+
+
 # ===== [지희] X-Ray·히트맵 파일 경로 =====
 # get_image_path(image_url: str) -> Path
 #   DB의 image_url을 Path로 바꾸고, 파일이 실제로 없으면 HTTPException
@@ -42,13 +42,13 @@ def get_heatmap_path(record_id: int) -> Path:
 
     heatmap_path = heatmap_dir / f"{record_id}_{MODEL_NAME}.png"
     return heatmap_path
- 
- 
+
+
 # ===== [시윤] AI 폐렴 예측 =====
 # POST /medical-records/{record_id}/predictions : AI 폐렴 예측 (StaffUser)
 #   진료기록 없음 404 → 같은 모델 결과 있으면 200 → 없으면 predict() 후 저장 201
- 
- # 같은 진료기록, 같은 모델로 저장된 예측 결과 찾기
+
+# 같은 진료기록, 같은 모델로 저장된 예측 결과 찾기
 async def find_saved_result(db: AsyncSession, record_id: int) -> AIAnalysisResult | None:
     result = await db.execute(
         select(AIAnalysisResult).where(
@@ -62,14 +62,15 @@ async def find_saved_result(db: AsyncSession, record_id: int) -> AIAnalysisResul
 # AI 폐렴 예측 -> POST /api/v1/medical-records/{record_id}/predictions
 @router.post(
     "/medical-records/{record_id}/predictions",
+    summary="AI 폐렴 예측 API",
     status_code=201,
     response_model=PredictionResponse,
 )
 async def create_prediction(
+    _: StaffUser,   # 변수를 안 써도 권한 확인(pending 차단)을 위해 필요
+    db: DBSession,
     record_id: int,
     response: Response,
-    db: DBSession,
-    user: StaffUser,   # 변수를 안 써도 권한 확인(pending 차단)을 위해 필요
 ):
     # 1. 진료기록 확인
     record = await db.get(MedicalRecord, record_id)
@@ -117,20 +118,10 @@ async def create_prediction(
 
     await db.refresh(new_result)
     return new_result
- 
- 
+
+
 # ===== [지수] 예측 결과 목록 조회 =====
 # GET /medical-records/{record_id}/predictions : 예측 결과 목록 조회 (StaffUser)
-
-
-from sqlalchemy import select
-
-from app.apis.dependencies import StaffUser, DBSession
-from app.models.ai_analysis_results import AIAnalysisResult
-from app.models.medical_records import MedicalRecord
-from app.schemas.predictions import PredictionListItemResponse
-
-
 @router.get(
     "/medical-records/{record_id}/predictions",
     summary="예측 결과 목록 조회 API",
@@ -189,4 +180,3 @@ async def get_heatmap_image(
         raise HTTPException(status_code=404, detail="히트맵 이미지를 찾을 수 없습니다.")
 
     return FileResponse(heatmap_path)
-

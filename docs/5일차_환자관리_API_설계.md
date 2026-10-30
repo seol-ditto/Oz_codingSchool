@@ -9,6 +9,7 @@
 - [6. 진료기록 등록 REQ-MDR-001](#6-진료기록-등록-req-mdr-001)
 - [7. 진료기록 목록 조회 REQ-MDR-002](#7-진료기록-목록-조회-req-mdr-002)
 - [8. 진료기록 상세 조회 REQ-MDR-003](#8-진료기록-상세-조회-req-mdr-003)
+- [9. X-Ray 이미지 파일 조회 (7일차 화면 연결용)](#9-x-ray-이미지-파일-조회-7일차-화면-연결용)
 
 ---
 
@@ -25,6 +26,7 @@
 - 환자: `/api/v1/patients`, 한 명은 `/api/v1/patients/{patient_id}`
 - 진료기록 목록·등록: `/api/v1/patients/{patient_id}/medical-records`
 - 진료기록 상세: `/api/v1/medical-records/{record_id}`
+- X-Ray 이미지 파일: `/api/v1/medical-records/{record_id}/xray-image` (7일차 화면 연결용)
 
 ### 필드 이름
 - 영어 소문자와 밑줄로 통일, **ERD 컬럼명과 동일하게** 사용
@@ -49,6 +51,8 @@
 ### X-Ray 이미지 규칙
 - 진료기록 등록 시 이미지 파일을 함께 업로드 (진료기록 1개당 이미지 1장)
 - 미리보기는 화면(브라우저)에서 처리, 별도 API 없음
+- 이미지 파일은 서버의 `private_uploads/xrays/`에 `{랜덤 이름}.{확장자}`로 저장하고, DB `image_url`에는 그 경로를 저장
+- 저장된 이미지 파일은 외부에 바로 공개하지 않고, X-Ray 이미지 파일 조회 API(9번)로 로그인한 직원에게만 보내줌
 - `shooting_datetime`: 선택 입력, 미입력 시 등록 시각으로 저장 (DB 필수 값이라서)
 - `uploader_id`: 요청으로 받지 않고, 로그인한 유저의 id를 서버가 저장
 
@@ -837,7 +841,7 @@
   "patient_id": 1,
   "chart_number": "20261028001",
   "symptoms": "기침 및 호흡곤란",
-  "image_url": "/uploads/xray/1.jpg",
+  "image_url": "private_uploads/xrays/8f14e45fceea167a5a36dedd4bea2543.png",
   "shooting_datetime": "2026-10-28T09:00:00",
   "created_at": "2026-10-28T14:30:00",
   "updated_at": null
@@ -849,7 +853,7 @@
 | patient_id | integer | 환자 고유 ID |
 | chart_number | string | 진료 차트 넘버 |
 | symptoms | string | 환자의 진료 증상 |
-| image_url | string | 업로드된 흉부 X-Ray 이미지 URL |
+| image_url | string | 서버에 저장된 흉부 X-Ray 이미지 경로 |
 | shooting_datetime | string | X-Ray 촬영 일시 |
 | created_at | string | 생성일시 (예: 2026-10-28T14:30:00) |
 | updated_at | string \| null | 수정일시. 수정 이력이 없으면 null |
@@ -1169,21 +1173,21 @@
 - 200 OK
 ```JSON
 {
-  "patient_id": 1,
   "id": 1,
+  "patient_id": 1,
   "chart_number": "20261028001",
   "symptoms": "기침과 발열이 3일간 지속되며 호흡 시 흉통을 호소함.",
-  "image_url": "/uploads/xray/1.jpg",
+  "image_url": "private_uploads/xrays/8f14e45fceea167a5a36dedd4bea2543.png",
   "created_at": "2026-10-28T14:30:00"
 }
 ```
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-| patient_id | integer | 진료기록의 환자 고유 ID |
 | id | integer | 진료기록 고유 ID |
+| patient_id | integer | 진료기록의 환자 고유 ID |
 | chart_number | string | 진료 차트 넘버 |
 | symptoms | string | 증상 (생략 없이 전체) |
-| image_url | string | 흉부 X-Ray 이미지 URL |
+| image_url | string | 서버에 저장된 흉부 X-Ray 이미지 경로 |
 | created_at | string | 생성일시 (예: 2026-10-28T14:30:00) |
 
 #### 응답 Headers
@@ -1250,4 +1254,121 @@
 - 증상은 목록 조회와 달리 생략 없이 전체를 반환한다.
 - 진료기록 1개당 X-Ray 이미지는 1장이며, image_url은 해당 진료기록의 X-Ray 이미지 정보에서 가져온다.
 - record_id가 숫자가 아닌 경우 422 오류를 반환한다.
-- 화면 동작을 위해 요구사항 외 필드로 추가 (7일차 회의 결정)
+- `patient_id`는 화면 동작("진료 목록으로" 버튼으로 환자 상세 이동)을 위해 요구사항 외 필드로 추가 (7일차 회의 결정)
+
+
+## 9. X-Ray 이미지 파일 조회 (7일차 화면 연결용)
+- 담당: 김설아
+- 요구사항
+    ```text
+    요구사항 없음 (7일차 화면 연결 때 추가)
+    진료기록 상세 화면에서 X-Ray 이미지를 보여주기 위해 필요
+    ```
+
+### 1) API 개요
+| 항목 | 내용 |
+| --- | --- |
+| API 이름 | X-Ray 이미지 파일 조회 |
+| 설명 | 진료기록에 등록된 흉부 X-Ray 이미지 파일을 응답한다. 이미지는 공개 폴더가 아니라 서버의 private_uploads에 있어서, 로그인한 직원인지 확인한 뒤에만 보내준다. |
+| 엔드포인트(Endpoint) | `/api/v1/medical-records/{record_id}/xray-image` |
+| 메서드(Method) | GET |
+| 인증 필요 여부 | Y (staff 이상만 가능) |
+
+### 2) 요청 (Request)
+#### Headers
+| Key | Value | 설명 |
+| --- | --- | --- |
+| Authorization | Bearer {access_token} | 로그인한 유저의 액세스 토큰 |
+
+#### 경로 파라미터
+| 파라미터명 | 타입 | 필수(Y/N) | 설명 |
+| --- | --- | --- | --- |
+| record_id | integer | Y | 이미지를 조회할 진료기록의 고유 ID |
+
+#### 본문 필드
+| 파라미터명 | 타입 | 필수(Y/N) | 설명 |
+| --- | --- | --- | --- |
+| 없음 | - | - | 없음 |
+
+#### 쿼리 파라미터 (GET 요청 시)
+| 쿼리 파라미터명 | 타입 | 필수(Y/N) | 설명 |
+| --- | --- | --- | --- |
+| 없음 | - | - | 없음 |
+
+### 3) 응답 (Response)
+#### 성공
+- 200 OK
+    - JSON이 아니라 이미지 파일 자체를 응답
+
+#### 응답 Headers
+| Key | 예시 값 | 설명 |
+| --- | --- | --- |
+| Content-Type | image/png 또는 image/jpeg | 응답 본문 형식 (이미지 파일) |
+
+#### 실패
+- 401 Unauthorized (토큰 없음 / 만료 / 위조, 없는 회원)
+```JSON
+{"detail": "인증 정보가 유효하지 않습니다."}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 에러 메시지 |
+
+- 403 Forbidden (비활성 회원)
+```JSON
+{"detail": "비활성화된 계정입니다."}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 에러 메시지 |
+
+- 403 Forbidden (대기자 권한: pending)
+```JSON
+{"detail": "접근 권한이 없습니다."}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 에러 메시지 |
+
+- 404 Not Found (없는 진료기록)
+```JSON
+{"detail": "존재하지 않는 진료기록입니다."}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 에러 메시지 |
+
+- 404 Not Found (X-Ray 이미지 파일을 찾을 수 없는 경우)
+```JSON
+{"detail": "X-Ray 이미지 파일을 찾을 수 없습니다."}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 에러 메시지 |
+
+- 422 Unprocessable Entity (record_id가 숫자가 아닌 경우)
+```JSON
+{
+  "detail": [
+    {
+      "type": "int_parsing",
+      "loc": ["path", "record_id"],
+      "msg": "Input should be a valid integer, unable to parse string as an integer",
+      "input": "abc"
+    }
+  ]
+}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | array | 검증 오류 목록 |
+| detail[].type | string | 오류 종류 |
+| detail[].loc | array | 오류가 발생한 위치 |
+| detail[].msg | string | 오류 메시지 |
+| detail[].input | any | 입력된 값 |
+
+### 4) 비고
+- staff, admin 모두 부서와 상관없이 조회할 수 있으며, pending은 접근할 수 없다.
+- 화면은 액세스 토큰을 붙여 이 API를 호출하고, 받은 이미지를 화면에 표시한다. (`<img src>`에 경로만 넣으면 토큰이 안 붙어서 401)
+- DB의 `image_url`이 `private_uploads/xrays/` 바깥을 가리키거나 파일이 없으면 404를 반환한다.
+- record_id가 숫자가 아닌 경우 422 오류를 반환한다.
