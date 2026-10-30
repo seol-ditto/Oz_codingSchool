@@ -192,56 +192,134 @@
 ### 1) API 개요
 | 항목 | 내용 |
 | --- | --- |
-| API 이름 |  |
-| 설명 |  |
-| 엔드포인트(Endpoint) |  |
-| 메서드(Method) |  |
-| 인증 필요 여부 |  |
+| API 이름 | 예측 결과 목록 조회 API |
+| 설명 | 지정한 진료기록에 저장된 AI 폐렴 예측 결과를 목록으로 조회한다. |
+| 엔드포인트(Endpoint) | `/api/v1/medical-records/{record_id}/predictions` |
+| 메서드(Method) | GET |
+| 인증 필요 여부 | Y (staff 이상만 가능) |
 
 ### 2) 요청 (Request)
 #### Headers
 | Key | Value | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| Authorization | Bearer {액세스 토큰} | 로그인 후 발급받은 액세스 토큰 |
 
 #### 경로 파라미터
 | 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| record_id | integer | Y | 예측 결과를 조회할 진료기록의 고유 ID |
 
 #### 본문 필드
 | 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| 없음 | - | - | 요청 본문 없음 |
 
 #### 쿼리 파라미터 (GET 요청 시)
 | 쿼리 파라미터명 | 타입 | 필수(Y/N) | 설명 |
 | --- | --- | --- | --- |
-|  |  |  |  |
+| 없음 | - | - | 쿼리 파라미터 없음 |
 
 ### 3) 응답 (Response)
 #### 성공
-- 
-```JSON
+- 200 OK: 해당 진료기록의 예측 결과 목록 조회 성공
 
+```JSON
+[
+  {
+    "id": 1,
+    "is_pneumonia": true,
+    "confidence": 97.53,
+    "heatmap_url": "private_uploads/heatmaps/heatmap_1.png",
+    "created_at": "2026-10-29T14:30:00",
+    "ai_model": "E8_lung_crop"
+  },
+  {
+    "id": 2,
+    "is_pneumonia": false,
+    "confidence": 92.15,
+    "heatmap_url": null,
+    "created_at": "2026-10-28T11:20:00",
+    "ai_model": "E8_lung_crop"
+  }
+]
 ```
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| id | integer | 예측 결과의 고유 ID |
+| is_pneumonia | boolean | 폐렴 여부 (`true`: 폐렴, `false`: 정상) |
+| confidence | number | AI 판정의 신뢰도(0~100%, 소수점 둘째 자리까지) |
+| heatmap_url | string 또는 null | 히트맵 이미지 경로, 생성 실패 시 `null` |
+| created_at | string (date-time) | 예측 수행 일시 (`YYYY-MM-DDTHH:mm:ss`) |
+| ai_model | string | 예측에 사용한 모델 이름(예: `E8_lung_crop`) |
 
 #### 응답 Headers
 | Key | 예시 값 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| Content-Type | application/json | JSON 형식의 응답 |
 
 #### 실패
-- 
-```JSON
+- 401 Unauthorized: 토큰 없음·만료·위조 또는 존재하지 않는 회원
 
+```JSON
+{"detail": "인증 정보가 유효하지 않습니다."}
 ```
 | 필드명 | 타입 | 설명 |
 | --- | --- | --- |
-|  |  |  |
+| detail | string | 인증 실패 메시지 |
+
+- 403 Forbidden: 비활성화된 계정
+
+```JSON
+{"detail": "비활성화된 계정입니다."}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 계정 상태 오류 메시지 |
+
+- 403 Forbidden: 접근 권한 부족(pending)
+
+```JSON
+{"detail": "접근 권한이 없습니다."}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 접근 권한 오류 메시지 |
+
+- 404 Not Found: 존재하지 않는 진료기록
+
+```JSON
+{"detail": "존재하지 않는 진료기록입니다."}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | string | 진료기록 조회 실패 메시지 |
+
+- 422 Unprocessable Entity: `record_id` 형식 오류
+
+```JSON
+{
+  "detail": [
+    {
+      "type": "int_parsing",
+      "loc": ["path", "record_id"],
+      "msg": "Input should be a valid integer, unable to parse string as an integer",
+      "input": "abc"
+    }
+  ]
+}
+```
+| 필드명 | 타입 | 설명 |
+| --- | --- | --- |
+| detail | array | 검증 오류 목록 |
+| detail[].type | string | 오류 종류 |
+| detail[].loc | array | 오류가 발생한 위치 |
+| detail[].msg | string | 오류 메시지 |
+| detail[].input | any | 입력된 값 |
 
 ### 4) 비고
-- 
+- 응답은 예측 결과 객체들의 배열이며, 저장된 예측 결과가 없으면 빈 배열 `[]`을 반환한다.
+- 결과는 예측 수행 일시(`created_at`) 내림차순으로 조회하며, 일시가 같으면 `id` 내림차순으로 정렬한다.
+- `record_id`는 진료기록 ID이고 응답의 `id`는 예측 결과 ID이다.
+- admin과 staff는 부서와 관계없이 조회할 수 있으며 pending은 조회할 수 없다.
+- 목록 조회는 저장된 AI 분석 결과를 읽는 작업으로, 새로운 AI 추론을 수행하지 않는다.
+- 히트맵 이미지 파일 경로는 예시이며 실제 저장 경로는 서버에서 생성된 값을 따른다.
