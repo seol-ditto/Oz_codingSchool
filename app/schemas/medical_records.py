@@ -48,6 +48,7 @@ class RecordDetailResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    patient_id: int   # 7일차: 화면의 "진료 목록으로" 버튼(환자 상세로 이동)용으로 추가
     chart_number: str
     symptoms: str
     image_url: str

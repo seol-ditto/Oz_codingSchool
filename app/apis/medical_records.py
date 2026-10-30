@@ -4,6 +4,7 @@ from typing import Annotated
 from uuid import uuid4
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
@@ -227,8 +228,50 @@ async def get_medical_record_detail(
 
     return RecordDetailResponse(
         id=record.id,
+        patient_id=record.patient_id,
         chart_number=record.chart_number,
         symptoms=record.symptoms,
         image_url=xray.image_url,
         created_at=record.created_at,
     )
+
+
+# ----- 진료기록 X-Ray 이미지 파일 (7일차 화면 연결용) -----
+# GET /medical-records/{record_id}/xray-image : X-Ray 이미지 파일 응답 (StaffUser)
+# private_uploads는 주소로 열 수 없는 비공개 폴더라서, 로그인한 직원인지 확인한 뒤에만 파일을 보내준다.
+@router.get(
+    "/medical-records/{record_id}/xray-image",
+    summary="진료기록 X-Ray 이미지 파일 조회 API",
+    response_class=FileResponse,
+)
+async def get_medical_record_xray_image(
+    _: StaffUser,
+    db: DBSession,
+    record_id: int,
+):
+    record = await db.get(MedicalRecord, record_id)
+    if record is None:
+        raise HTTPException(
+            status_code=404,
+            detail="존재하지 않는 진료기록입니다."
+        )
+
+    result = await db.execute(
+        select(XrayImage).where(XrayImage.record_id == record_id)
+    )
+    xray = result.scalars().first()
+
+    # 업로드 폴더 안의 실제 파일만 보내기 (DB 값이 이상해도 다른 폴더 파일은 못 꺼내게)
+    upload_dir = Path("private_uploads/xrays").resolve()
+    image_path = Path(xray.image_url).resolve() if xray else None
+    if (
+        image_path is None
+        or not image_path.is_relative_to(upload_dir)
+        or not image_path.is_file()
+    ):
+        raise HTTPException(
+            status_code=404,
+            detail="X-Ray 이미지 파일을 찾을 수 없습니다."
+        )
+
+    return FileResponse(image_path)
