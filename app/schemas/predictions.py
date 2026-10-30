@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel
 
 
@@ -9,4 +11,10 @@ class PredictionResponse(BaseModel):
 
 
 # ===== [지수] 예측 결과 목록 응답 스키마 (REQ-PRED-002) =====
-# PredictionListItemResponse: id, is_pneumonia, confidence, heatmap_url, created_at, ai_model
+class PredictionListItemResponse(BaseModel):
+    id: int
+    is_pneumonia: bool
+    confidence: float
+    heatmap_url: str | None
+    created_at: datetime
+    ai_model: str
