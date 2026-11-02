@@ -36,28 +36,26 @@ async function login(email, password) {
     }
 }
 
+// 브라우저에 저장된 로그인 상태만 지우고 로그인 화면으로 이동 (서버 호출 없음)
+function clearSession() {
+    state.token = null;
+    state.user = null;
+    localStorage.removeItem('token');
+    localStorage.removeItem('isLoggedIn');
+    updateNav();
+    navigate('/login');
+}
+
 async function logout(event) {
     if (event) event.preventDefault();
     try {
-        if (typeof apis !== 'undefined' && apis.logout) {
-            await apis.logout();
-            state.token = null;
-            state.user = null;
-            localStorage.removeItem('token');
-            localStorage.removeItem('isLoggedIn');
-            updateNav();
-            await navigate('/login');
-        }
+        // 서버에서 리프레시 토큰 쿠키 삭제 (POST /api/v1/auth/logout)
+        await apis.logout();
     } catch (err) {
         console.error('Logout failed:', err);
-        // 에러가 발생하더라도 클라이언트 측 세션은 정리하고 로그인 페이지로 이동
-        state.token = null;
-        state.user = null;
-        localStorage.removeItem('token');
-        localStorage.removeItem('isLoggedIn');
-        updateNav();
-        navigate('/login');
     }
+    // 서버 응답과 상관없이 브라우저 쪽 로그인 상태는 정리
+    clearSession();
 }
 
 async function checkAuth() {
@@ -85,7 +83,7 @@ async function checkAuth() {
         state.user = await apis.getMe();
         updateNav();
     } catch (err) {
-        if (state.token) logout();
+        if (state.token) clearSession();
     }
 }
 
@@ -103,7 +101,7 @@ function updateNav() {
         }
         
         authLink.innerHTML = `
-            <span class="user-info" onclick="navigate('/my-page')" style="cursor: pointer;">${state.user.name}(${state.user.department})</span>
+            <span class="user-info" onclick="navigate('/my-page')" style="cursor: pointer;">${state.user.name}(${utils.departmentLabel(state.user.department)})</span>
             <a href="#" onclick="logout(event)" class="nav-btn logout-btn">로그아웃</a>
         `;
     } else {
@@ -140,7 +138,8 @@ async function navigate(path, pushState = true) {
             return;
         }
 
-        if (state.user && state.user.role === 'pending' && !publicPaths.includes(pathname)) {
+        // 대기자(pending)는 마이페이지까지는 들어갈 수 있음 (권한표: "마이페이지 외 모든 서비스 접근 불가")
+        if (state.user && state.user.role === 'pending' && !publicPaths.includes(pathname) && pathname !== '/my-page') {
             utils.showAlert('승인 대기 중인 사용자입니다. 관리자의 승인 이후에 사용가능합니다.', 'error', '접근 제한');
             await navigate('/');
             return;

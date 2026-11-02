@@ -57,6 +57,19 @@ const utils = {
         e.target.value = formattedValue;
     },
 
+    // 우리 API 값(M/F, develop/medical/research, pending/staff/admin)을 화면 표시용 한글로 바꿈
+    genderLabel(value) {
+        return { M: '남성', F: '여성' }[value] || value;
+    },
+
+    departmentLabel(value) {
+        return { develop: '개발팀', medical: '의료진', research: '연구진' }[value] || value;
+    },
+
+    roleLabel(value) {
+        return { pending: '승인대기', staff: '일반회원', admin: '관리자' }[value] || value;
+    },
+
     templatesCache: {},
 
     async loadTemplate(name) {

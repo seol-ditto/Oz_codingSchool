@@ -1,0 +1,77 @@
+# PR 리뷰 흐름을 디스코드로 알려주는 워크플로
+# 기존 GitHub → 디스코드 웹훅(/github)이 안 보내주는 이벤트만 따로 보냄
+#   1. 리뷰 요청·재리뷰 요청 (review_requested)
+#   2. 리뷰어가 리뷰 제출 (Approve / Request changes / Comment)
+#   3. 열린 PR에 새 커밋 푸시 (synchronize) → "수정 반영했어요" 확인용
+#
+# 준비: 저장소 Settings → Secrets and variables → Actions → New repository secret
+#   이름: DISCORD_PR_WEBHOOK
+#   값: 디스코드 채널 웹훅 URL (끝에 /github 붙이지 않은 원래 주소)
+
+name: Discord PR 알림
+
+on:
+  pull_request:
+    types: [review_requested, synchronize]
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 디스코드로 보내기
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_PR_WEBHOOK }}
+          EVENT: ${{ github.event_name }}
+          ACTION: ${{ github.event.action }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          ACTOR: ${{ github.actor }}
+          REVIEWER: ${{ github.event.requested_reviewer.login }}
+          REVIEW_STATE: ${{ github.event.review.state }}
+          REVIEW_URL: ${{ github.event.review.html_url }}
+          # GitHub 아이디 → 디스코드 사용자 ID (디스코드에서 프로필 우클릭 → 사용자 ID 복사, 개발자 모드 필요)
+          # 채우면 @멘션으로 호출되고, 비워두면 GitHub 아이디만 표시돼요
+          DISCORD_IDS: |
+            seol-ditto=690100531733200967
+            soooni1229-art=1524560449033605130
+            siyunggu=1516280627899535400
+            wlgml2244-jpg=1512690535519879184
+        run: |
+          if [ -z "$WEBHOOK" ]; then
+            echo "DISCORD_PR_WEBHOOK 시크릿이 없어서 건너뜀"
+            exit 0
+          fi
+
+          # GitHub 아이디를 디스코드 멘션으로 바꾸기 (없으면 아이디 그대로)
+          mention() {
+            id=$(printf '%s\n' "$DISCORD_IDS" | grep "^$1=" | cut -d= -f2 | tr -d '[:space:]')
+            if [ -n "$id" ]; then echo "<@$id>"; else echo "$1"; fi
+          }
+
+          case "$EVENT:$ACTION" in
+            pull_request:review_requested)
+              MSG="👀 $(mention "$REVIEWER") 님, #$PR_NUMBER 리뷰 요청이 왔어요! (요청: $ACTOR)
+          $PR_TITLE
+          $PR_URL" ;;
+            pull_request:synchronize)
+              MSG="🔁 #$PR_NUMBER 에 새 커밋이 올라왔어요 ($ACTOR)
+          $PR_TITLE
+          $PR_URL" ;;
+            pull_request_review:submitted)
+              case "$REVIEW_STATE" in
+                approved) STATE="✅ Approve" ;;
+                changes_requested) STATE="🛠 수정 요청" ;;
+                *) STATE="💬 코멘트" ;;
+              esac
+              MSG="$STATE · $(mention "$PR_AUTHOR") 님, #$PR_NUMBER 에 $ACTOR 님 리뷰가 달렸어요!
+          $PR_TITLE
+          $REVIEW_URL" ;;
+            *) exit 0 ;;
+          esac
+
+          jq -n --arg content "$MSG" '{content: $content}' \
+            | curl -sS -X POST -H "Content-Type: application/json" -d @- "$WEBHOOK"
