@@ -44,6 +44,7 @@ PR 리뷰 때는 맨 아래 **리뷰 체크리스트**로 확인합니다.
 1. **필드는 내 명세서 표와 똑같이**
    - 이름, 종류, 필수 여부를 명세서 "본문 필드" / "성공 응답" 표 그대로 옮기기
    - 요구사항에 없는 필드를 추가하거나, 있는 필드를 빼지 않기
+   - 화면 동작에 꼭 필요하면 회의로 정하고 명세서 비고에 이유 적기 (예: 7일차 `id`, `role`, `patient_id`)
 
 2. **필수 여부 쓰는 법**
    - 필수 Y → `email: str`
@@ -53,10 +54,11 @@ PR 리뷰 때는 맨 아래 **리뷰 체크리스트**로 확인합니다.
    - `role: Role`, `department: Department`, `gender: Gender`
    - 정해진 값이 아니면 FastAPI가 자동으로 422를 보내줌
 
-4. **DB에서 꺼낸 User를 그대로 넘기는 응답에는 설정 추가**
+4. **DB에서 꺼낸 객체를 그대로 넘기는 응답에는 설정 추가**
    ```python
    model_config = ConfigDict(from_attributes=True)
    ```
+   - 적용 범위: `users.py`뿐 아니라 **모든 스키마 파일** (User, Patient, MedicalRecord, AIAnalysisResult 등)
 
 5. **응답에 `hashed_password` 절대 넣지 않기**
 
@@ -89,6 +91,7 @@ class UserListItemResponse(BaseModel):
     department: Department
     gender: Gender
     phone_number: str | None
+    role: Role   # 7일차: 관리자 화면 권한 선택칸 표시용으로 추가
     is_active: bool
 
 
